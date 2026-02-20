@@ -33,18 +33,20 @@ export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const theme = React.useMemo(() => createTheme({
     palette: {
       mode,
-      // Soft Gray brand palette
-      primary: { main: '#6b7280', light: '#9ca3af', dark: '#374151', contrastText: '#ffffff' },
+      // Brand palette tuned for better contrast in both modes
+      primary: { main: '#6366f1', light: '#a5b4fc', dark: '#4f46e5', contrastText: '#ffffff' },
+      secondary: { main: '#06b6d4', light: '#67e8f9', dark: '#0891b2', contrastText: '#001018' },
       success: { main: '#16a34a', light: '#22c55e', dark: '#15803d', contrastText: '#ffffff' },
       warning: { main: '#f59e0b', light: '#fbbf24', dark: '#b45309', contrastText: mode === 'light' ? '#111827' : '#0b1020' },
       error: { main: '#dc2626', light: '#ef4444', dark: '#b91c1c', contrastText: '#ffffff' },
       info: { main: '#64748b', light: '#94a3b8', dark: '#475569', contrastText: '#ffffff' },
       background: mode === 'light'
-        ? { default: '#fafafa', paper: '#ffffff' }
-        : { default: '#0a0a0b', paper: '#111114' },
+        ? { default: '#f7f7fb', paper: '#ffffff' }
+        : { default: '#0b1020', paper: '#0f172a' },
       text: mode === 'light'
-        ? { primary: '#111827', secondary: '#6b7280' }
-        : { primary: '#f9fafb', secondary: '#d1d5db' },
+        ? { primary: '#0b1020', secondary: '#6b7280' }
+        : { primary: '#e5e7eb', secondary: '#cbd5e1' },
+      divider: mode === 'light' ? 'rgba(2,6,23,0.08)' : 'rgba(148,163,184,0.24)',
       grey: mode === 'light' ? {
         50: '#f9fafb',
         100: '#f3f4f6',
@@ -57,16 +59,16 @@ export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         800: '#1f2937',
         900: '#111827',
       } : {
-        50: '#1a1a1d',
-        100: '#202023',
-        200: '#2a2a2d',
-        300: '#36363a',
-        400: '#4a4a4f',
-        500: '#6b6b70',
-        600: '#8b8b90',
-        700: '#a8a8ad',
-        800: '#c4c4c9',
-        900: '#e1e1e6',
+        50: '#0f172a',
+        100: '#111827',
+        200: '#131c2f',
+        300: '#1e293b',
+        400: '#334155',
+        500: '#475569',
+        600: '#64748b',
+        700: '#94a3b8',
+        800: '#cbd5e1',
+        900: '#e2e8f0',
       },
     },
     shape: { borderRadius: 10 },
@@ -83,6 +85,34 @@ export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       button: { fontWeight: 600 },
     },
     components: {
+      MuiCssBaseline: {
+        styleOverrides: (theme) => ({
+          ':root': {
+            colorScheme: theme.palette.mode,
+          },
+          body: {
+            backgroundImage: theme.palette.mode === 'light'
+              ? 'radial-gradient(60rem 60rem at -10% -10%, rgba(99,102,241,0.06), transparent 50%), radial-gradient(60rem 60rem at 120% -10%, rgba(6,182,212,0.06), transparent 50%)'
+              : 'radial-gradient(80rem 60rem at -20% -20%, rgba(99,102,241,0.12), transparent 55%), radial-gradient(80rem 60rem at 120% -10%, rgba(6,182,212,0.10), transparent 55%)',
+            backgroundAttachment: 'fixed',
+            transition: 'background-color 200ms ease, color 200ms ease',
+          },
+          '*:focus-visible': {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: 2,
+          },
+          '::-webkit-scrollbar': { width: 10, height: 10 },
+          '::-webkit-scrollbar-thumb': {
+            background: theme.palette.mode === 'light' ? '#c5c9d2' : '#3b4457',
+            borderRadius: 8,
+            border: `2px solid ${theme.palette.background.default}`,
+          },
+          '::-webkit-scrollbar-track': {
+            background: theme.palette.mode === 'light' ? '#eef0f4' : '#0b1020',
+            borderRadius: 8,
+          },
+        }),
+      },
       MuiToolbar: {
         styleOverrides: {
           root: ({ theme }) => ({
@@ -122,15 +152,15 @@ export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           root: ({ theme }) => ({
             borderRadius: 16,
             boxShadow: theme.palette.mode === 'light'
-              ? '0 6px 18px rgba(0,0,0,0.08)'
-              : '0 6px 18px rgba(0,0,0,0.4)',
+              ? '0 6px 18px rgba(2,6,23,0.06)'
+              : '0 8px 24px rgba(0,0,0,0.5)',
             transition: 'transform 160ms ease, box-shadow 160ms ease',
             border: theme.palette.mode === 'dark' ? `1px solid ${theme.palette.grey[200]}` : 'none',
             '&:hover': {
               transform: 'translateY(-2px)',
               boxShadow: theme.palette.mode === 'light'
-                ? '0 10px 24px rgba(0,0,0,0.12)'
-                : '0 10px 24px rgba(0,0,0,0.6)',
+                ? '0 12px 28px rgba(2,6,23,0.10)'
+                : '0 12px 28px rgba(0,0,0,0.65)',
             },
           }),
         },
@@ -149,11 +179,12 @@ export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       MuiAppBar: {
         styleOverrides: {
           root: ({ theme }) => ({
-            backgroundColor: theme.palette.background.paper,
+            backgroundColor: theme.palette.mode === 'light' ? '#ffffffcc' : '#0f172acc',
             color: theme.palette.text.primary,
+            backdropFilter: 'saturate(180%) blur(8px)',
             boxShadow: theme.palette.mode === 'light'
-              ? '0 2px 10px rgba(0,0,0,0.06)'
-              : '0 2px 10px rgba(0,0,0,0.4)',
+              ? '0 2px 10px rgba(2,6,23,0.06)'
+              : '0 2px 10px rgba(0,0,0,0.5)',
             borderBottom: theme.palette.mode === 'dark' ? `1px solid ${theme.palette.grey[200]}` : 'none',
           }),
         },

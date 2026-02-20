@@ -21,6 +21,26 @@ const setTokens = (access: string, refresh: string) => {
   localStorage.setItem('access_token', access);
   localStorage.setItem('refresh_token', refresh);
 };
+
+// Navigation helpers
+export const navigationAPI = {
+  redirectAfterLogin: async (): Promise<{ redirect_to: string }> => {
+    const response = await api.get('/redirect-after-login/');
+    return response.data;
+  },
+};
+
+// Tickets API
+export const ticketsAPI = {
+  create: async (payload: { title: string; description?: string }): Promise<{ id: number; title: string; description?: string; status: string; created_at: string }> => {
+    const response = await api.post('/tickets/create/', payload);
+    return response.data;
+  },
+  listMy: async (): Promise<Array<{ id: number; title: string; description?: string; status: string; created_at: string }>> => {
+    const response = await api.get('/tickets/my/');
+    return response.data;
+  },
+};
 const clearTokens = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
@@ -79,7 +99,7 @@ export const authAPI = {
   },
   
   register: async (data: RegisterRequest): Promise<User> => {
-    const response = await api.post('/register/', data);
+    const response = await api.post('/users/register/', data);
     return response.data;
   },
   

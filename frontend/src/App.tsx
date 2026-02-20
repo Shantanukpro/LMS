@@ -15,6 +15,13 @@ import Maintenance from './pages/Maintenance';
 import Inventory from './pages/Inventory';
 import Settings from './pages/Settings';
 import Account from './pages/Account';
+import { useAuth } from './contexts/AuthContext';
+
+const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { user } = useAuth();
+  if (user?.role === 'student') return <Navigate to="/maintenance" replace />;
+  return children;
+};
 
 const App: React.FC = () => {
   return (
@@ -29,7 +36,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <Dashboard />
+                  <AdminRoute>
+                    <Dashboard />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -40,7 +49,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <PCs />
+                  <AdminRoute>
+                    <PCs />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -51,7 +62,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <Equipment />
+                  <AdminRoute>
+                    <Equipment />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -62,7 +75,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <Software />
+                  <AdminRoute>
+                    <Software />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -84,7 +99,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <Inventory />
+                  <AdminRoute>
+                    <Inventory />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -106,7 +123,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <Labs />
+                  <AdminRoute>
+                    <Labs />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -117,7 +136,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <LabDetail />
+                  <AdminRoute>
+                    <LabDetail />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -128,7 +149,9 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <Account />
+                  <AdminRoute>
+                    <Account />
+                  </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>
             }

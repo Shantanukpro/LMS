@@ -49,6 +49,7 @@ export interface Software {
 export interface MaintenanceLog {
   id: number;
   equipment: number;
+  lab?: number;
   reported_by?: number;
   fixed_by?: number;
   issue_description?: string;
@@ -61,7 +62,7 @@ export interface MaintenanceLog {
 }
 
 export interface Inventory {
-  id: number;
+  id: string;
   equipment_type: string;
   total_quantity: number;
   working_quantity: number;
@@ -86,4 +87,16 @@ export interface AuthResponse {
   refresh: string;
   role?: 'admin' | 'student';
   username?: string;
+}
+
+export interface Ticket {
+  id: number;
+  title: string;
+  description?: string;
+  status: 'open' | 'in_progress' | 'closed' | string;
+  created_at: string;
+}
+
+export interface RedirectAfterLoginResponse {
+  redirect_to: string;
 }
