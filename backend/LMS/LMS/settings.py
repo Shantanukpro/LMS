@@ -201,3 +201,19 @@ CSRF_TRUSTED_ORIGINS = [
     'http://172.19.96.1:5173',
     'http://172.19.96.1:5174',
 ]
+
+# ---------------------------------------------------------
+# EMAIL CONFIGURATION (Prototype/Production)
+# ---------------------------------------------------------
+# Use the Console backend for development to see emails in the terminal
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Example: Gmail SMTP Configuration (uncomment and configure for production)
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='your-email@gmail.com')
+# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')
+
+DEFAULT_FROM_EMAIL = 'LMS Notifications <noreply@lms-system.com>'
