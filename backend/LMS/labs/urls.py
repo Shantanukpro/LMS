@@ -1,8 +1,8 @@
 from django.urls import path
-from . import views, include
+from django.urls import include  # not used here; keep only if needed
+from . import views
 
 urlpatterns = [
-    path('', include('labs.urls')),
     path('users/', views.UserList.as_view(), name='user-list'),
     path('users/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
     path('labs/', views.LabList.as_view(), name='lab-list'),

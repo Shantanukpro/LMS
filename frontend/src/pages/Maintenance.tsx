@@ -114,7 +114,7 @@ const Maintenance: React.FC = () => {
           id: m.id,
           equipment: m.equipment,
           equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${m.equipment}`,
-          lab: equip?.lab || null,
+          lab: (m as any).lab ?? equip?.lab ?? null,
           title: (m as any).issue_description || '',
           description: (m as any).remarks ?? '',
           status: m.status as 'pending' | 'fixed',
@@ -321,7 +321,9 @@ const Maintenance: React.FC = () => {
                 </IconButton>
               </span>
             </Tooltip>
-            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>Add Log</Button>
+            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
+              {isAdmin ? 'Add Log' : 'Report Issue'}
+            </Button>
           </Stack>
         </CardContent>
       </Card>
@@ -342,6 +344,7 @@ const Maintenance: React.FC = () => {
               <Box component="thead" sx={{ backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.100' : 'grey.200' }}>
                 <Box component="tr">
                   <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Equipment</Box>
+                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Lab</Box>
                   <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Issue</Box>
                   <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status</Box>
                   <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status Before</Box>
@@ -354,6 +357,7 @@ const Maintenance: React.FC = () => {
                 {filtered.map((row) => (
                   <Box key={row.id} component="tr" sx={{ '&:nth-of-type(even)': { backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.50' : 'grey.100' } }}>
                     <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{row.equipment_name || `Equipment #${row.equipment}`}</Box>
+                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{labs.find((l) => l.id === row.lab)?.name || (row.lab ?? '-')}</Box>
                     <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{row.title}</Box>
                     <Box component="td" sx={{ p: 1.5, textTransform: 'capitalize', color: 'text.primary' }}>{row.status}</Box>
                     <Box component="td" sx={{ p: 1.5, textTransform: 'capitalize', color: 'text.secondary' }}>{row.status_before.replace('_', ' ')}</Box>

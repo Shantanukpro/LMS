@@ -32,11 +32,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const token = getToken();
-    if (token && token.startsWith('dev_')) {
-      // Only auto-sign-in for explicit dev tokens
-      setUser({ id: 1, username: 'devuser', email: 'dev@example.com', role: 'admin' });
+    if (token) {
+      // Try restoring previously stored user info
+      try {
+        const raw = localStorage.getItem('user_info');
+        if (raw) {
+          const stored = JSON.parse(raw) as Partial<User>;
+          if (stored && stored.role) {
+            setUser({
+              id: stored.id ?? 0,
+              username: stored.username ?? '',
+              email: stored.email ?? '',
+              role: stored.role as User['role'],
+            });
+          } else if (token.startsWith('dev_')) {
+            setUser({ id: 1, username: 'devuser', email: 'dev@example.com', role: 'admin' });
+          } else {
+            // Fallback: treat as authenticated with minimal info to avoid redirect loop
+            setUser({ id: 0, username: '', email: '', role: 'student' });
+          }
+        } else if (token.startsWith('dev_')) {
+          setUser({ id: 1, username: 'devuser', email: 'dev@example.com', role: 'admin' });
+        } else {
+          setUser({ id: 0, username: '', email: '', role: 'student' });
+        }
+      } catch {
+        setUser({ id: 0, username: '', email: '', role: 'student' });
+      }
     }
-    // For real tokens, we do not auto-set user without validation (/me) to avoid accidental auto-login
     setLoading(false);
   }, []);
 
@@ -53,6 +76,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         role: (response.role as User['role']) || 'student',
       };
       setUser(loggedInUser);
+      // Persist minimal user info for refresh survival
+      localStorage.setItem('user_info', JSON.stringify(loggedInUser));
     } catch (error) {
       throw error;
     }
@@ -71,6 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     clearTokens();
     setUser(null);
+    localStorage.removeItem('user_info');
   };
 
   const value: AuthContextType = {
@@ -90,6 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         role: 'admin',
       };
       setUser(mockUser);
+      localStorage.setItem('user_info', JSON.stringify(mockUser));
     },
   };
 

@@ -79,9 +79,9 @@ class MaintenanceLogList(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        # Students can only see their own maintenance logs
+        # Students should see all maintenance logs so they can view updates made by admins
         if user.role == 'student':
-            return MaintenanceLog.objects.filter(reported_by=user)
+            return MaintenanceLog.objects.all()
         # Admins can see all
         return MaintenanceLog.objects.all()
 

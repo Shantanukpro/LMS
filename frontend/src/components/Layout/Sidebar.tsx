@@ -21,6 +21,7 @@ import {
   Inventory2 as InventoryIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const drawerWidth = 280;
 
@@ -42,6 +43,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -81,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       </Toolbar>
       <Divider />
       <List>
-        {menuItems.map((item) => (
+        {(user?.role === 'student' ? menuItems.filter(mi => mi.text === 'Maintenance') : menuItems).map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               onClick={() => handleNavigation(item.path)}
