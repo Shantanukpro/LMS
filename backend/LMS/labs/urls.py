@@ -19,5 +19,5 @@ urlpatterns = [
     path('inventory/', views.InventoryList.as_view(), name='inventory-list'),
     path('inventory/<int:pk>/', views.InventoryDetail.as_view(), name='inventory-detail'),
     path('redirect-after-login/', views.redirect_after_login, name='redirect-after-login'),
-
+    path('labs/import/', views.import_data_api, name='labs-import'),
 ]

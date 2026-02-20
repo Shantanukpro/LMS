@@ -160,3 +160,49 @@ class InventoryDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Inventory.objects.all()
     serializer_class = InventorySerializer
     permission_classes = [IsAdminOrReadOnly]
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from labs.importers import import_labs, import_pcs, import_equipment
+
+@csrf_exempt  # if you are calling from Postman / frontend
+def import_data_api(request):
+    """
+    POST multipart/form-data:
+      - file: CSV or XLSX
+      - entity: labs | pcs | equipment
+    """
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    file = request.FILES.get("file")
+    entity = request.POST.get("entity")
+
+    if not file or not entity:
+        return JsonResponse(
+            {"detail": "file and entity are required (labs | pcs | equipment)"},
+            status=400,
+        )
+
+    try:
+        if entity == "labs":
+            created, skipped, errors = import_labs(file)
+        elif entity == "pcs":
+            created, skipped, errors = import_pcs(file)
+        elif entity == "equipment":
+            created, skipped, errors = import_equipment(file)
+        else:
+            return JsonResponse({"detail": "Invalid entity"}, status=400)
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "created": created,
+                "skipped": skipped,
+                "errors": errors,
+            },
+            status=201,
+        )
+
+    except Exception as e:
+        return JsonResponse({"detail": str(e)}, status=500)
