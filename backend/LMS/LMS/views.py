@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from labs.importers import import_labs, import_pcs, import_equipment
+from labs.importers import import_labs, import_pcs, import_lab_equipment
 
 
 class BulkImportAPIView(APIView):
@@ -54,11 +54,11 @@ class BulkImportAPIView(APIView):
                 created, skipped, errors = import_labs(file)
             elif entity == "pcs":
                 created, skipped, errors = import_pcs(file)
-            elif entity == "equipment":
-                created, skipped, errors = import_equipment(file)
+            elif entity == "lab-equipment":
+                created, skipped, errors = import_lab_equipment(file)
             else:
                 return Response(
-                    {"detail": "Invalid entity. Use labs | pcs | equipment."},
+                    {"detail": "Invalid entity. Use labs | pcs | lab-equipment."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
