@@ -14,12 +14,42 @@ NETWORK_TYPES = ('ROUTER', 'SWITCH', 'HUB', 'SERVER', 'E_BOARD')
 def load_dataframe(file):
     """Load CSV or Excel file into pandas DataFrame."""
     name = file.name.lower()
-    if name.endswith(".csv"):
-        return pd.read_csv(file)
-    elif name.endswith(".xlsx") or name.endswith(".xls"):
-        return pd.read_excel(file)
-    else:
-        raise ValueError("Only CSV and XLSX files are supported.")
+    try:
+        if name.endswith(".csv"):
+            return pd.read_csv(file, on_bad_lines='skip')
+        elif name.endswith(".xlsx") or name.endswith(".xls"):
+            return pd.read_excel(file)
+        else:
+            raise ValueError("Only CSV and XLSX files are supported.")
+    except Exception as e:
+        raise ValueError(f"Error loading file: {e}")
+
+
+def get_val(row, *keys, default=None):
+    """Get value from row, handling NaN and None properly."""
+    for key in keys:
+        val = row.get(key)
+        if val is not None and not pd.isna(val):
+            return val
+    return default
+
+
+def parse_bool(val):
+    """Parse boolean value from various representations."""
+    if val is None or pd.isna(val):
+        return False
+    val_str = str(val).lower().strip()
+    return val_str in ('yes', 'true', '1', 'y', 't')
+
+
+def parse_int(val, default=None):
+    """Parse integer value from various representations."""
+    if val is None or pd.isna(val):
+        return default
+    try:
+        return int(float(val))
+    except (ValueError, TypeError):
+        return default
 
 
 def normalize_columns(df):
@@ -77,12 +107,7 @@ def import_labs(file):
     for i, row in df.iterrows():
         try:
             # Try multiple column names for lab name
-            lab_name = (
-                row.get("name") or 
-                row.get("lab_name") or 
-                row.get("labname") or
-                None
-            )
+            lab_name = get_val(row, "name", "lab_name", "labname")
             
             if not lab_name or str(lab_name).strip() == '':
                 errors.append(f"Row {i+2}: Lab name is required")
@@ -96,15 +121,13 @@ def import_labs(file):
                 continue
 
             # Location - optional
-            location = row.get("location") or row.get("lab_location") or None
-            if location:
-                location = str(location).strip()
+            location = get_val(row, "location", "lab_location")
 
             Lab.objects.create(name=lab_name, location=location)
             created += 1
 
         except Exception as e:
-            errors.append(f"Row {i+2}: {str(e)}")
+            errors.append(f"Row {i+2}: {type(e).__name__}: {e}")
 
     return created, skipped, errors
 
@@ -134,13 +157,7 @@ def import_pcs(file, lab_id=None):
     for i, row in df.iterrows():
         try:
             # Try multiple column names for PC name
-            device_name = (
-                row.get("device_name") or 
-                row.get("name") or 
-                row.get("pc_name") or 
-                row.get("pc_name_comp_id") or
-                None
-            )
+            device_name = get_val(row, "device_name", "name", "pc_name", "pc_name_comp_id")
             
             if not device_name or str(device_name).strip() == '':
                 errors.append(f"Row {i+2}: PC device name is required")
@@ -154,16 +171,9 @@ def import_pcs(file, lab_id=None):
                 continue
             
             # Status - default to working
-            status = row.get("status") or "working"
-            if status not in ALLOWED_STATUS:
+            status = get_val(row, "status", default="working")
+            if status and status not in ALLOWED_STATUS:
                 status = "working"
-            
-            # Boolean fields - handle various representations
-            def parse_bool(val):
-                if val is None or pd.isna(val):
-                    return False
-                val_str = str(val).lower().strip()
-                return val_str in ('yes', 'true', '1', 'y', 't')
             
             connected = parse_bool(row.get("connected"))
             gpu = parse_bool(row.get("gpu"))
@@ -172,24 +182,24 @@ def import_pcs(file, lab_id=None):
             PC.objects.create(
                 lab=lab,
                 device_name=device_name,
-                product_id=row.get("product_id") or None,
-                processor=row.get("processor") or None,
-                ram=row.get("ram") or None,
-                storage=row.get("storage") or None,
+                product_id=get_val(row, "product_id"),
+                processor=get_val(row, "processor"),
+                ram=get_val(row, "ram"),
+                storage=get_val(row, "storage"),
                 status=status,
                 connected=connected,
                 gpu=gpu,
                 peripherals=peripherals,
-                brand=row.get("brand") or None,
-                serial_number=row.get("serial_number") or row.get("serial") or None
+                brand=get_val(row, "brand"),
+                serial_number=get_val(row, "serial_number", "serial")
             )
             created += 1
 
         except Exception as e:
-            errors.append(f"Row {i+2}: {str(e)}")
+            errors.append(f"Row {i+2}: {type(e).__name__}: {e}")
 
     return {
-        "lab": lab.name,
+        "lab": lab.name if lab else None,
         "created": created,
         "skipped": skipped,
         "errors": errors
@@ -222,12 +232,7 @@ def import_lab_equipment(file, lab_id=None):
     for i, row in df.iterrows():
         try:
             # Equipment code - try multiple column names
-            equipment_code = (
-                row.get("equipment_code") or 
-                row.get("code") or 
-                row.get("eq_code") or
-                None
-            )
+            equipment_code = get_val(row, "equipment_code", "code", "eq_code")
             
             # Generate code if missing
             if not equipment_code or str(equipment_code).strip() == '':
@@ -236,53 +241,33 @@ def import_lab_equipment(file, lab_id=None):
                 equipment_code = str(equipment_code).strip()
             
             # Name - fallback to code
-            name = (
-                row.get("name") or 
-                row.get("equipment_name") or 
-                row.get("eq_name") or
-                equipment_code
-            )
+            name = get_val(row, "name", "equipment_name", "eq_name") or equipment_code
             name = str(name).strip()
             
             # Category - default to INFRASTRUCTURE
-            category = (
-                row.get("category") or 
-                row.get("cat") or 
-                "INFRASTRUCTURE"
-            )
+            category = get_val(row, "category", "cat") or "INFRASTRUCTURE"
             if category not in ALLOWED_CATEGORIES:
                 category = "INFRASTRUCTURE"
             
             # Equipment type - default to OTHER
-            eq_type = (
-                row.get("equipment_type") or 
-                row.get("type") or 
-                row.get("eq_type") or 
-                "OTHER"
-            )
+            eq_type_raw = get_val(row, "equipment_type", "type", "eq_type")
+            if eq_type_raw is not None:
+                eq_type = str(eq_type_raw).strip().upper()
+            else:
+                eq_type = "OTHER"
             if eq_type not in ALLOWED_EQUIPMENT_TYPES:
                 errors.append(f"Row {i+2}: Invalid equipment_type '{eq_type}', defaulting to OTHER")
                 eq_type = "OTHER"
             
             # Status - default to working
-            status = row.get("status") or "working"
-            if status not in ALLOWED_STATUS:
+            status = get_val(row, "status", default="working")
+            if status and status not in ALLOWED_STATUS:
                 status = "working"
             
             # Quantity
-            try:
-                quantity = int(row.get("quantity") or 1)
-                if quantity < 1:
-                    quantity = 1
-            except (ValueError, TypeError):
+            quantity = parse_int(row.get("quantity"), default=1)
+            if quantity < 1:
                 quantity = 1
-            
-            # Boolean: is_networked
-            def parse_bool(val):
-                if val is None or pd.isna(val):
-                    return False
-                val_str = str(val).lower().strip()
-                return val_str in ('yes', 'true', '1', 'y', 't')
             
             is_networked = parse_bool(row.get("is_networked"))
             
@@ -298,14 +283,14 @@ def import_lab_equipment(file, lab_id=None):
                 name=name,
                 category=category,
                 equipment_type=eq_type,
-                brand=row.get("brand") or None,
-                model_name=row.get("model_name") or row.get("model") or None,
+                brand=get_val(row, "brand"),
+                model_name=get_val(row, "model_name", "model"),
                 quantity=quantity,
                 status=status,
                 is_networked=is_networked,
-                installation_date=row.get("installation_date") or None,
-                location_in_lab=row.get("location_in_lab") or row.get("location") or None,
-                remarks=row.get("remarks") or row.get("notes") or None,
+                installation_date=get_val(row, "installation_date"),
+                location_in_lab=get_val(row, "location_in_lab", "location"),
+                remarks=get_val(row, "remarks", "notes"),
             )
             created += 1
             
@@ -313,8 +298,8 @@ def import_lab_equipment(file, lab_id=None):
             
             # NetworkEquipmentDetails (for ROUTER, SWITCH, HUB, SERVER, E_BOARD)
             if eq_type in NETWORK_TYPES:
-                ip_address = row.get("ip_address") or row.get("ip") or None
-                mac_address = row.get("mac_address") or row.get("mac") or None
+                ip_address = get_val(row, "ip_address", "ip")
+                mac_address = get_val(row, "mac_address", "mac")
                 
                 if ip_address or mac_address:
                     try:
@@ -322,21 +307,21 @@ def import_lab_equipment(file, lab_id=None):
                             equipment=lab_equipment,
                             ip_address=ip_address,
                             mac_address=mac_address,
-                            firmware_version=row.get("firmware_version") or row.get("firmware") or None,
-                            number_of_ports=row.get("number_of_ports") or row.get("ports"),
-                            rack_unit_size=row.get("rack_unit_size") or row.get("rack_size"),
+                            firmware_version=get_val(row, "firmware_version", "firmware"),
+                            number_of_ports=parse_int(row.get("number_of_ports")) or parse_int(row.get("ports")),
+                            rack_unit_size=parse_int(row.get("rack_unit_size")) or parse_int(row.get("rack_size")),
                             managed_switch=parse_bool(row.get("managed_switch")),
-                            bandwidth_capacity=row.get("bandwidth_capacity") or row.get("bandwidth") or None,
-                            power_rating=row.get("power_rating") or row.get("power") or None
+                            bandwidth_capacity=get_val(row, "bandwidth_capacity", "bandwidth"),
+                            power_rating=get_val(row, "power_rating", "power")
                         )
                     except Exception as e:
-                        errors.append(f"Row {i+2} (NetworkDetails): {str(e)}")
+                        errors.append(f"Row {i+2} (NetworkDetails): {type(e).__name__}: {e}")
             
             # ServerDetails (for SERVER only)
             if eq_type == "SERVER":
-                cpu_model = row.get("cpu_model") or row.get("cpu") or None
-                total_ram = row.get("total_ram") or row.get("ram") or None
-                total_storage = row.get("total_storage") or row.get("storage") or None
+                cpu_model = get_val(row, "cpu_model", "cpu")
+                total_ram = get_val(row, "total_ram", "ram")
+                total_storage = get_val(row, "total_storage", "storage")
                 
                 if cpu_model or total_ram or total_storage:
                     try:
@@ -345,51 +330,53 @@ def import_lab_equipment(file, lab_id=None):
                             cpu_model=cpu_model,
                             total_ram=total_ram,
                             total_storage=total_storage,
-                            raid_config=row.get("raid_config") or row.get("raid") or None,
+                            raid_config=get_val(row, "raid_config", "raid"),
                             virtualization_enabled=parse_bool(row.get("virtualization_enabled")),
-                            operating_system=row.get("operating_system") or row.get("os") or None
+                            operating_system=get_val(row, "operating_system", "os")
                         )
                     except Exception as e:
-                        errors.append(f"Row {i+2} (ServerDetails): {str(e)}")
+                        errors.append(f"Row {i+2} (ServerDetails): {type(e).__name__}: {e}")
             
             # ProjectorDetails (for PROJECTOR)
             if eq_type == "PROJECTOR":
-                resolution = row.get("resolution") or None
+                resolution = get_val(row, "resolution")
+                brightness_lumens = parse_int(row.get("brightness_lumens")) or parse_int(row.get("brightness"))
                 
-                if resolution or row.get("brightness_lumens"):
+                if resolution or brightness_lumens:
                     try:
                         ProjectorDetails.objects.create(
                             equipment=lab_equipment,
                             resolution=resolution,
-                            brightness_lumens=row.get("brightness_lumens") or row.get("brightness"),
-                            throw_type=row.get("throw_type") or row.get("throw") or None,
-                            hdmi_ports=row.get("hdmi_ports") or row.get("hdmi")
+                            brightness_lumens=brightness_lumens,
+                            throw_type=get_val(row, "throw_type", "throw"),
+                            hdmi_ports=parse_int(row.get("hdmi_ports")) or parse_int(row.get("hdmi"))
                         )
                     except Exception as e:
-                        errors.append(f"Row {i+2} (ProjectorDetails): {str(e)}")
+                        errors.append(f"Row {i+2} (ProjectorDetails): {type(e).__name__}: {e}")
             
             # ElectricalApplianceDetails (for AC, FAN, LIGHT)
             if eq_type in ('AC', 'FAN', 'LIGHT'):
-                power_rating = row.get("power_rating") or row.get("power") or None
+                power_rating = get_val(row, "power_rating", "power")
+                voltage = get_val(row, "voltage")
                 
-                if power_rating or row.get("voltage"):
+                if power_rating or voltage:
                     try:
                         ElectricalApplianceDetails.objects.create(
                             equipment=lab_equipment,
                             power_rating=power_rating,
-                            voltage=row.get("voltage") or None,
+                            voltage=voltage,
                             inverter_type=parse_bool(row.get("inverter_type")),
-                            energy_rating=row.get("energy_rating") or row.get("energy_star") or None,
-                            service_due_date=row.get("service_due_date") or row.get("service_date") or None
+                            energy_rating=get_val(row, "energy_rating", "energy_star"),
+                            service_due_date=get_val(row, "service_due_date", "service_date")
                         )
                     except Exception as e:
-                        errors.append(f"Row {i+2} (ElectricalDetails): {str(e)}")
+                        errors.append(f"Row {i+2} (ElectricalDetails): {type(e).__name__}: {e}")
 
         except Exception as e:
-            errors.append(f"Row {i+2}: {str(e)}")
+            errors.append(f"Row {i+2}: {type(e).__name__}: {e}")
 
     return {
-        "lab": lab.name,
+        "lab": lab.name if lab else None,
         "created": created,
         "skipped": skipped,
         "errors": errors
