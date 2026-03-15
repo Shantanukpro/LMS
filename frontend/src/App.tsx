@@ -15,6 +15,8 @@ import Maintenance from './pages/Maintenance';
 import Inventory from './pages/Inventory';
 import Settings from './pages/Settings';
 import Account from './pages/Account';
+import MusterRegister from './pages/MusterRegister';
+import MusterList from './pages/MusterList';
 import { useAuth } from './contexts/AuthContext';
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -144,18 +146,55 @@ const App: React.FC = () => {
             }
           />
 
-          <Route
-            path="/account"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <AdminRoute>
-                    <Account />
-                  </AdminRoute>
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
+           <Route
+             path="/account"
+             element={
+               <ProtectedRoute>
+                 <AppLayout>
+                   <AdminRoute>
+                     <Account />
+                   </AdminRoute>
+                 </AppLayout>
+               </ProtectedRoute>
+             }
+           />
+           {/* Muster Register Routes */}
+           <Route
+             path="/muster/register"
+             element={
+               <ProtectedRoute>
+                 <AppLayout>
+                   <AdminRoute>
+                     <MusterRegister />
+                   </AdminRoute>
+                 </AppLayout>
+               </ProtectedRoute>
+             }
+           />
+           <Route
+             path="/muster/register/:sessionId"
+             element={
+               <ProtectedRoute>
+                 <AppLayout>
+                   <AdminRoute>
+                     <MusterRegister />
+                   </AdminRoute>
+                 </AppLayout>
+               </ProtectedRoute>
+             }
+           />
+           <Route
+             path="/muster/list"
+             element={
+               <ProtectedRoute>
+                 <AppLayout>
+                   <AdminRoute>
+                     <MusterList />
+                   </AdminRoute>
+                 </AppLayout>
+               </ProtectedRoute>
+             }
+           />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

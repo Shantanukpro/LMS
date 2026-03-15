@@ -17,7 +17,7 @@ export interface Lab {
 export interface PC {
   id: number;
   lab: number;
-  name: string;
+  device_name: string;
   status: string;
   brand?: string;
   serial_number?: string;
@@ -74,21 +74,18 @@ export interface LoginRequest {
   username: string;
   password: string;
 }
-
 export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
   role: 'admin' | 'student';
 }
-
 export interface AuthResponse {
   access: string;
   refresh: string;
   role?: 'admin' | 'student';
   username?: string;
 }
-
 export interface Ticket {
   id: number;
   title: string;
@@ -96,7 +93,27 @@ export interface Ticket {
   status: 'open' | 'in_progress' | 'closed' | string;
   created_at: string;
 }
-
 export interface RedirectAfterLoginResponse {
   redirect_to: string;
+}
+
+// Muster Register Types
+export interface MusterSession {
+  id: number;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM:SS
+  lab: number;
+  lab_name: string;
+  class_name: string;
+  batch: string;
+  created_at: string;
+  entries: MusterEntry[];
+}
+
+export interface MusterEntry {
+  id: number;
+  sr_no: number;
+  roll_no: string;
+  pc: number;
+  pc_name: string;
 }

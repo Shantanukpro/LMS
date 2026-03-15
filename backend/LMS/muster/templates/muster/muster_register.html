@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muster Register - New Session</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">New Muster Session</h1>
+        <form method="post" id="musterForm">
+            {% csrf_token %}
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required value="{{ now|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="time" class="form-label">Time (HH:MM)</label>
+                    <input type="time" class="form-control" id="time" name="time" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="lab" class="form-label">Lab Name</label>
+                    <select class="form-select" id="lab" name="lab" required>
+                        <option value="">Select Lab</option>
+                        {% for lab in labs %}
+                            <option value="{{ lab.id }}">{{ lab.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="class_name" class="form-label">Class</label>
+                    <input type="text" class="form-control" id="class_name" name="class_name" required>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="batch" class="form-label">Batch</label>
+                    <input type="text" class="form-control" id="batch" name="batch" required>
+                </div>
+                <div class="col-md-9"></div>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Session and Edit Register</button>
+        </form>
+    </div>
+
+    <!-- Bootstrap JS (for dropdowns, etc.) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Set today's date as default for the date field
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('date');
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+        });
+    </script>
+</body>
+</html>

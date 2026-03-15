@@ -18,7 +18,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/tickets/', include('tickets.urls')),
     path('api/notifications/', include('notifications.urls')),
-
+    path('muster/', include('muster.urls')),  # Muster Register URLs
 
     # Admin interface
     path('admin/', admin.site.urls),

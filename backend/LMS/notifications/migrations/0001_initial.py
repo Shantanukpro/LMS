@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('labs', '0003_maintenancelog_lab'),
+        ('labs', '0002_alter_maintenancelog_options_alter_pc_options_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
