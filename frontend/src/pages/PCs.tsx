@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, Card, CardContent, Stack, TextField, MenuItem, Chip, CircularProgress } from '@mui/material';
-import { Search, Refresh } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { Box, Typography, Card, CardContent, Stack, TextField, MenuItem, Chip, CircularProgress, Button, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
+import { Search, Refresh, Add, Edit, Delete } from '@mui/icons-material';
 import { labsAPI, pcsAPI } from '../services/api';
 import type { Lab, PC } from '../types';
 
@@ -21,14 +22,49 @@ const getStatusChip = (status: string) => {
 };
 
 const PCs: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [labs, setLabs] = useState<Lab[]>([]);
   const [pcs, setPcs] = useState<PC[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const [q, setQ] = useState('');
   const [fLab, setFLab] = useState<number | ''>('');
   const [fStatus, setFStatus] = useState<string | ''>('');
+
+  // Form state
+  const [openForm, setOpenForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    pc_code: '',
+    brand: '',
+    serial_number: '',
+    processor: '',
+    ram: '',
+    storage: '',
+    status: 'working' as 'working' | 'not_working' | 'under_repair',
+    connected: true,
+    gpu: false,
+    peripherals: false,
+  });
+
+  const emptyForm = {
+    name: '',
+    pc_code: '',
+    brand: '',
+    serial_number: '',
+    processor: '',
+    ram: '',
+    storage: '',
+    status: 'working' as 'working' | 'not_working' | 'under_repair',
+    connected: true,
+    gpu: false,
+    peripherals: false,
+  };
 
   const load = async () => {
     try {
@@ -37,7 +73,7 @@ const PCs: React.FC = () => {
 
       const labsData = await labsAPI.getAll();
       // Extract results from paginated response
-      const labsArray = Array.isArray(labsData?.results) ? labsData.results : Array.isArray(labsData) ? labsData : [];
+      const labsArray = Array.isArray(labsData) ? labsData : [];
       setLabs(labsArray);
 
       const all: PC[] = [];
@@ -45,7 +81,7 @@ const PCs: React.FC = () => {
         try {
           const labPcs = await pcsAPI.getByLab(lab.id);
           // Extract results from paginated response if needed
-          const pcsArray = Array.isArray(labPcs?.results) ? labPcs.results : Array.isArray(labPcs) ? labPcs : [];
+          const pcsArray = Array.isArray(labPcs) ? labPcs : [];
           all.push(...pcsArray);
         } catch (err) {
           console.warn(`Failed to load PCs for lab ${lab.id}:`, err);
@@ -101,6 +137,83 @@ const PCs: React.FC = () => {
   const labIds = Object.keys(byLab).map(Number);
   const maxLabTotal = Math.max(1, ...labIds.map((id) => byLab[id]?.total || 0));
 
+  const openCreate = () => {
+    setEditingId(null);
+    setFormData(emptyForm);
+    setOpenForm(true);
+  };
+
+  const openEdit = (pc: PC) => {
+    setEditingId(pc.id);
+    setFormData({
+      name: pc.name || '',
+      pc_code: pc.pc_code || '',
+      brand: pc.brand || '',
+      serial_number: pc.serial_number || '',
+      processor: pc.processor || '',
+      ram: pc.ram || '',
+      storage: pc.storage || '',
+      status: pc.status || 'working',
+      connected: pc.connected,
+      gpu: pc.gpu,
+      peripherals: pc.peripherals,
+    });
+    setOpenForm(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.pc_code.trim()) {
+      setError('PC name and PC code are required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const payload = {
+        name: formData.name.trim(),
+        pc_code: formData.pc_code.trim(),
+        brand: formData.brand || undefined,
+        serial_number: formData.serial_number || undefined,
+        processor: formData.processor || undefined,
+        ram: formData.ram || undefined,
+        storage: formData.storage || undefined,
+        status: formData.status,
+        connected: formData.connected,
+        gpu: formData.gpu,
+        peripherals: formData.peripherals,
+      };
+
+      if (editingId) {
+        const updated = await pcsAPI.update(editingId, payload);
+        setPcs((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
+        setSuccess('PC updated');
+      } else {
+        // Need to select a lab for creating new PC
+        if (!fLab) {
+          setError('Please select a lab to add a PC');
+          return;
+        }
+        const created = await pcsAPI.create(fLab, payload);
+        setPcs((prev) => [created, ...prev]);
+        setSuccess('PC created');
+      }
+      setOpenForm(false);
+    } catch (err: any) {
+      const data = err?.response?.data;
+      if (data) {
+        const msgs: string[] = [];
+        Object.entries(data).forEach(([k, v]) => {
+          if (Array.isArray(v)) msgs.push(`${k}: ${v.join(' ')}`);
+          else if (typeof v === 'string') msgs.push(`${k}: ${v}`);
+        });
+        setError(msgs.join('\n') || 'Save failed');
+      } else setError('Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -138,6 +251,16 @@ const PCs: React.FC = () => {
               <Chip color="warning" label={`Under Repair: ${totals.under_repair}`} sx={{ mr: 1 }} />
               {totals.other > 0 && <Chip color="default" label={`Other: ${totals.other}`} />}
             </Box>
+            <Tooltip title="Refresh">
+              <IconButton onClick={load} disabled={loading}>
+                {loading ? <CircularProgress size={22} /> : <Refresh />}
+              </IconButton>
+            </Tooltip>
+            {isAdmin && (
+              <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
+                Add PC
+              </Button>
+            )}
           </Stack>
         </CardContent>
       </Card>
@@ -213,6 +336,107 @@ const PCs: React.FC = () => {
           </Card>
         </>
       )}
+
+      {/* Add/Edit PC Dialog */}
+      {isAdmin && (
+        <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="md">
+          <DialogTitle>{editingId ? 'Edit PC' : 'Add PC'}</DialogTitle>
+          <Box component="form" onSubmit={handleSave}>
+            <DialogContent>
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                  <TextField 
+                    label="PC Name" 
+                    value={formData.name} 
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                    required 
+                    fullWidth 
+                  />
+                  <TextField 
+                    label="PC Code" 
+                    value={formData.pc_code} 
+                    onChange={(e) => setFormData({ ...formData, pc_code: e.target.value })} 
+                    required 
+                    fullWidth 
+                  />
+                </Stack>
+                <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                  <TextField label="Brand" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} fullWidth />
+                  <TextField label="Serial Number" value={formData.serial_number} onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} fullWidth />
+                </Stack>
+                <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                  <TextField label="Processor" value={formData.processor} onChange={(e) => setFormData({ ...formData, processor: e.target.value })} fullWidth />
+                  <TextField label="RAM" value={formData.ram} onChange={(e) => setFormData({ ...formData, ram: e.target.value })} fullWidth />
+                </Stack>
+                <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                  <TextField label="Storage" value={formData.storage} onChange={(e) => setFormData({ ...formData, storage: e.target.value })} fullWidth />
+                  <TextField 
+                    select 
+                    label="Status" 
+                    value={formData.status} 
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} 
+                    fullWidth
+                  >
+                    <MenuItem value="working">Working</MenuItem>
+                    <MenuItem value="not_working">Not Working</MenuItem>
+                    <MenuItem value="under_repair">Under Repair</MenuItem>
+                  </TextField>
+                </Stack>
+                <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                  <TextField
+                    select
+                    label="Connected"
+                    value={formData.connected}
+                    onChange={(e) => setFormData({ ...formData, connected: e.target.value as any })}
+                    fullWidth
+                  >
+                    <MenuItem value={true}>Connected</MenuItem>
+                    <MenuItem value={false}>Disconnected</MenuItem>
+                  </TextField>
+                  <TextField
+                    select
+                    label="GPU"
+                    value={formData.gpu}
+                    onChange={(e) => setFormData({ ...formData, gpu: e.target.value as any })}
+                    fullWidth
+                  >
+                    <MenuItem value={true}>Has GPU</MenuItem>
+                    <MenuItem value={false}>No GPU</MenuItem>
+                  </TextField>
+                  <TextField
+                    select
+                    label="Peripherals"
+                    value={formData.peripherals}
+                    onChange={(e) => setFormData({ ...formData, peripherals: e.target.value as any })}
+                    fullWidth
+                  >
+                    <MenuItem value={true}>Has Peripherals</MenuItem>
+                    <MenuItem value={false}>No Peripherals</MenuItem>
+                  </TextField>
+                </Stack>
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenForm(false)}>Cancel</Button>
+              <Button type="submit" variant="contained" disabled={saving}>
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            </DialogActions>
+          </Box>
+        </Dialog>
+      )}
+
+      {/* Success/Error Messages */}
+      <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
+        <Alert severity="error" onClose={() => setError('')} sx={{ whiteSpace: 'pre-line' }} variant="filled">
+          {error}
+        </Alert>
+      </Snackbar>
+      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
+        <Alert severity="success" onClose={() => setSuccess('')} variant="filled">
+          {success}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

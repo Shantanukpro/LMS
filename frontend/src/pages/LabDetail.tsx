@@ -100,7 +100,7 @@ const LabDetail: React.FC = () => {
       setSaving(true);
       if (editingId) {
         const updated = await pcsAPI.update(editingId, {
-          name: formData.name.trim(),
+          device_name: formData.name.trim(),
           status: formData.status,
           brand: formData.brand?.trim() || undefined,
           serial_number: formData.serial_number?.trim() || undefined,
@@ -109,7 +109,7 @@ const LabDetail: React.FC = () => {
         setSuccess('PC updated successfully');
       } else {
         const created = await pcsAPI.create(labId, {
-          name: formData.name.trim(),
+          device_name: formData.name.trim(),
           status: formData.status,
           brand: formData.brand?.trim() || undefined,
           serial_number: formData.serial_number?.trim() || undefined,
@@ -250,7 +250,6 @@ const LabDetail: React.FC = () => {
               >
                 <MenuItem value="working">Working</MenuItem>
                 <MenuItem value="not_working">Not Working</MenuItem>
-                <MenuItem value="under_repair">Under Repair</MenuItem>
               </TextField>
               <TextField
                 label="Brand"

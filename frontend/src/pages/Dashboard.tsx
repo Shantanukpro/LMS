@@ -1,20 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  CircularProgress,
-  Alert,
-} from '@mui/material';
-import {
-  Science as LabIcon,
-  Computer as PCIcon,
-  Hardware as EquipmentIcon,
-  Build as MaintenanceIcon,
-} from '@mui/icons-material';
-import { equipmentAPI, labsAPI, maintenanceAPI } from '../services/api';
-import type { Equipment, Lab, MaintenanceLog } from '../types';
+import { Monitor, Server, Wrench, AlertTriangle, CheckCircle } from 'lucide-react';
+import { labEquipmentAPI, labsAPI, maintenanceAPI, pcsAPI } from '../services/api';
+import type { LabEquipment, Lab, MaintenanceLog, PC } from '../types';
 
 interface DashboardStats {
   totalLabs: number;
@@ -23,6 +10,8 @@ interface DashboardStats {
   notWorkingEquipment: number;
   underRepairEquipment: number;
   pendingMaintenance: number;
+  totalPCs: number;
+  workingPCs: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -33,6 +22,8 @@ const Dashboard: React.FC = () => {
     notWorkingEquipment: 0,
     underRepairEquipment: 0,
     pendingMaintenance: 0,
+    totalPCs: 0,
+    workingPCs: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,27 +36,32 @@ const Dashboard: React.FC = () => {
         setError('');
 
         // Fetch all data in parallel
-        const [labs, equipment, maintenance] = await Promise.all<[
+        const [labs, equipment, pcs, maintenance] = await Promise.all<[
+          any,
           any,
           any,
           any
         ]>([
           labsAPI.getAll(),
-          equipmentAPI.getAll(),
+          labEquipmentAPI.getAll(),
+          pcsAPI.getAll(),
           maintenanceAPI.getAll(),
         ]);
 
         // Extract results from paginated responses
         const labsArray = (Array.isArray(labs) ? labs : (labs?.results ?? [])) as Lab[];
-        const equipmentArray = (Array.isArray(equipment) ? equipment : (equipment?.results ?? [])) as Equipment[];
+        const equipmentArray = (Array.isArray(equipment) ? equipment : (equipment?.results ?? [])) as LabEquipment[];
+        const pcsArray = (Array.isArray(pcs) ? pcs : (pcs?.results ?? [])) as PC[];
         const maintenanceArray = (Array.isArray(maintenance) ? maintenance : (maintenance?.results ?? [])) as MaintenanceLog[];
 
         // Calculate stats from actual equipment data
         const totalLabs = labsArray.length;
         const totalEquipment = equipmentArray.length;
-        const workingEquipment = equipmentArray.filter((item: Equipment) => item.status === 'working').length;
-        const notWorkingEquipment = equipmentArray.filter((item: Equipment) => item.status === 'not_working').length;
-        const underRepairEquipment = equipmentArray.filter((item: Equipment) => item.status === 'under_repair').length;
+        const workingEquipment = equipmentArray.filter((item: LabEquipment) => item.status === 'working').length;
+        const notWorkingEquipment = equipmentArray.filter((item: LabEquipment) => item.status === 'not_working').length;
+        const underRepairEquipment = equipmentArray.filter((item: LabEquipment) => item.status === 'under_repair').length;
+        const totalPCs = pcsArray.length;
+        const workingPCs = pcsArray.filter((item: PC) => item.status === 'working').length;
         const pendingMaintenance = maintenanceArray.filter((log: MaintenanceLog) => log.status === 'pending').length;
 
         setStats({
@@ -75,6 +71,8 @@ const Dashboard: React.FC = () => {
           notWorkingEquipment,
           underRepairEquipment,
           pendingMaintenance,
+          totalPCs,
+          workingPCs,
         });
 
       } catch (err: any) {
@@ -92,180 +90,110 @@ const Dashboard: React.FC = () => {
     title: string;
     value: number;
     icon: React.ReactNode;
-    color: string; // expects one of: 'primary' | 'info' | 'success' | 'warning' | 'error' | 'secondary'
+    color: 'blue' | 'green' | 'purple' | 'amber' | 'red' | 'orange';
   }> = ({ title, value, icon, color }) => {
-    const gradients: Record<string, string> = {
-      primary: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-      info: 'linear-gradient(135deg, #06b6d4 0%, #0e7490 100%)',
-      success: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
-      warning: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-      error: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-      secondary: 'linear-gradient(135deg, #f97316 0%, #c2410c 100%)',
+    const colorClasses = {
+      blue: 'from-blue-500 to-blue-600',
+      green: 'from-green-500 to-green-600',
+      purple: 'from-purple-500 to-purple-600',
+      amber: 'from-amber-500 to-amber-600',
+      red: 'from-red-500 to-red-600',
+      orange: 'from-orange-500 to-orange-600',
     };
-    const bg = gradients[color] || gradients.primary;
 
     return (
-      <Card
-        sx={{
-          height: '100%',
-          borderRadius: 3,
-          overflow: 'hidden',
-          backgroundImage: bg,
-          color: 'common.white',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-          position: 'relative',
-          transition: 'transform 180ms ease, box-shadow 180ms ease',
-          '&:hover': {
-            transform: 'translateY(-3px) scale(1.01)',
-            boxShadow: '0 16px 35px rgba(0,0,0,0.22)',
-          },
-        }}
-      >
-        <CardContent sx={{ position: 'relative' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-            <Box
-              sx={{
-                mr: 2,
-                p: 1.25,
-                borderRadius: 2,
-                backgroundColor: 'rgba(255,255,255,0.18)',
-                color: 'common.white',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                '& svg': { fontSize: 28 },
-              }}
-              aria-hidden
-            >
-              {icon}
-            </Box>
-            <Typography variant="subtitle1" component="div" sx={{ fontWeight: 600, opacity: 0.95 }}>
-              {title}
-            </Typography>
-          </Box>
-          <Typography
-            variant="h3"
-            component="div"
-            sx={{ fontWeight: 800, letterSpacing: 0.5, textShadow: '0 2px 6px rgba(0,0,0,0.25)' }}
-          >
-            {value}
-          </Typography>
-        </CardContent>
-      </Card>
+      <div className="rounded-2xl p-6 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg border" 
+           style={{ 
+             backgroundColor: 'var(--card-bg)', 
+             borderColor: 'var(--border-color)',
+             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+           }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className={`w-12 h-12 bg-gradient-to-r ${colorClasses[color]} rounded-xl flex items-center justify-center`}>
+            {icon}
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{value}</p>
+          </div>
+        </div>
+        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{title}</p>
+      </div>
     );
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex items-center justify-center min-h-[400px]" style={{ backgroundColor: 'var(--bg-main)' }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-500"></div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
-      </Alert>
+      <div className="rounded-xl p-4 mb-6 border" style={{ 
+        backgroundColor: '#FEE2E2', 
+        borderColor: '#FCA5A5'
+      }}>
+        <p className="text-sm" style={{ color: '#DC2626' }}>{error}</p>
+      </div>
     );
   }
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 4 }}>
-        Dashboard
-      </Typography>
+    <div className="space-y-8">
+      {/* Dashboard Header */}
+      <div>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Monitor and manage your lab infrastructure and resources</p>
+      </div>
 
-      <Box
-        sx={{
-          display: 'grid',
-          gap: 3,
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: 'repeat(2, 1fr)',
-            md: 'repeat(3, 1fr)',
-            lg: 'repeat(6, 1fr)',
-          },
-        }}
-      >
-        <Box>
-          <StatCard
-            title="Total Labs"
-            value={stats.totalLabs}
-            icon={<LabIcon />}
-            color="primary"
-          />
-        </Box>
-        <Box>
-          <StatCard
-            title="Total Equipment"
-            value={stats.totalEquipment}
-            icon={<EquipmentIcon />}
-            color="info"
-          />
-        </Box>
-        <Box>
-          <StatCard
-            title="Working Equipment"
-            value={stats.workingEquipment}
-            icon={<PCIcon />}
-            color="success"
-          />
-        </Box>
-        <Box>
-          <StatCard
-            title="Not Working Equipment"
-            value={stats.notWorkingEquipment}
-            icon={<PCIcon />}
-            color="error"
-          />
-        </Box>
-        <Box>
-          <StatCard
-            title="Under Repair Equipment"
-            value={stats.underRepairEquipment}
-            icon={<MaintenanceIcon />}
-            color="info"
-          />
-        </Box>
-        <Box>
-          <StatCard
-            title="Pending Maintenance"
-            value={stats.pendingMaintenance}
-            icon={<MaintenanceIcon />}
-            color="secondary"
-          />
-        </Box>
-      </Box>
-
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
-          Quick Overview
-        </Typography>
-        <Card>
-          <CardContent>
-            <Typography variant="body1" color="text.secondary">
-              Welcome to the Yashwantrao Bhonsale Institute of Technology Lab Management System.
-              Use the navigation menu to manage labs, equipment, software, and maintenance logs.
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                • Equipment Status: {stats.workingEquipment} working, {stats.notWorkingEquipment} not working, {stats.underRepairEquipment} under repair (out of {stats.totalEquipment} total)
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                • Maintenance: {stats.pendingMaintenance} pending issues
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                • Labs: {stats.totalLabs} labs being managed
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-
-      
-    </Box>
+      {/* Statistics Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <StatCard
+          title="Total PCs"
+          value={stats.totalPCs}
+          icon={<Monitor className="h-6 w-6 text-white" />}
+          color="blue"
+        />
+        <StatCard
+          title="Working PCs"
+          value={stats.workingPCs}
+          icon={<CheckCircle className="h-6 w-6 text-white" />}
+          color="green"
+        />
+        <StatCard
+          title="Total Equipment"
+          value={stats.totalEquipment}
+          icon={<Server className="h-6 w-6 text-white" />}
+          color="purple"
+        />
+        <StatCard
+          title="Working Equipment"
+          value={stats.workingEquipment}
+          icon={<CheckCircle className="h-6 w-6 text-white" />}
+          color="green"
+        />
+        <StatCard
+          title="Not Working Equipment"
+          value={stats.notWorkingEquipment}
+          icon={<AlertTriangle className="h-6 w-6 text-white" />}
+          color="red"
+        />
+        <StatCard
+          title="Under Repair Equipment"
+          value={stats.underRepairEquipment}
+          icon={<Wrench className="h-6 w-6 text-white" />}
+          color="amber"
+        />
+        <StatCard
+          title="Pending Maintenance"
+          value={stats.pendingMaintenance}
+          icon={<AlertTriangle className="h-6 w-6 text-white" />}
+          color="orange"
+        />
+      </div>
+    </div>
   );
 };
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Typography, Card, CardContent, Stack, Chip, CircularProgress, Alert } from '@mui/material';
-import { inventoryAPI } from '../services/api';
+// import { inventoryAPI } from '../services/api';
 import type { Inventory as InventoryRow } from '../types';
 
 type Agg = {
@@ -20,9 +20,10 @@ const Inventory: React.FC = () => {
       setLoading(true);
       setError('');
 
-      const data = await inventoryAPI.getAll();
+      // const data = await inventoryAPI.getAll();
       // Extract results from paginated response
-      const inventoryArray = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+      // const inventoryArray = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+      const inventoryArray: InventoryRow[] = []; // Temporary empty data
       setRows(inventoryArray);
     } catch (e: any) {
       console.error('Failed to load inventory:', e);

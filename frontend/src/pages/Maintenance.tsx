@@ -20,9 +20,9 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
-// Using native date inputs to avoid extra dependencies
-import { maintenanceAPI, labsAPI, equipmentAPI } from '../services/api';
-import type { MaintenanceLog, Lab, Equipment } from '../types';
+import { RefreshCw } from 'lucide-react';
+import { maintenanceAPI, labsAPI, labEquipmentAPI } from '../services/api';
+import type { MaintenanceLog, Lab, LabEquipment } from '../types';
 
 const STATUS = ['pending', 'fixed'] as const;
 const EQUIPMENT_STATUS = ['working', 'not_working', 'under_repair'] as const;
@@ -58,7 +58,7 @@ const Maintenance: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const [items, setItems] = useState<MaintRow[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [equipment, setEquipment] = useState<LabEquipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -98,7 +98,7 @@ const Maintenance: React.FC = () => {
       const [logs, labsData, equipmentData] = await Promise.all([
         maintenanceAPI.getAll(),
         labsAPI.getAll(),
-        equipmentAPI.getAll(),
+        labEquipmentAPI.getAll(),
       ]);
 
       // Extract results from paginated responses (or plain arrays)
@@ -109,11 +109,11 @@ const Maintenance: React.FC = () => {
 
       // Map backend MaintenanceLog to UI MaintRow
       const mapped: MaintRow[] = logsArray.map((m: MaintenanceLog) => {
-        const equip = equipmentArray.find((e: any) => e.id === m.equipment);
+        const equip = equipmentArray.find((e: any) => e.id === m.lab_equipment);
         return {
           id: m.id,
-          equipment: m.equipment,
-          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${m.equipment}`,
+          equipment: m.lab_equipment!,
+          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${m.lab_equipment}`,
           lab: (m as any).lab ?? equip?.lab ?? null,
           title: (m as any).issue_description || '',
           description: (m as any).remarks ?? '',
@@ -196,7 +196,7 @@ const Maintenance: React.FC = () => {
       setSaving(true);
 
       const payload: any = {
-        equipment: formData.equipment,
+        lab_equipment: formData.equipment,
         issue_description: formData.title.trim(),
         remarks: formData.description || undefined,
         status_before: formData.status_before,
@@ -206,11 +206,11 @@ const Maintenance: React.FC = () => {
       };
       if (editingId) {
         const updated = await maintenanceAPI.update(editingId, payload);
-        const equip = equipment.find(e => e.id === updated.equipment);
+        const equip = equipment.find(e => e.id === updated.lab_equipment);
         const mapped: MaintRow = {
           id: updated.id,
-          equipment: updated.equipment,
-          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${updated.equipment}`,
+          equipment: updated.lab_equipment!,
+          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${updated.lab_equipment}`,
           lab: equip?.lab || null,
           title: updated.issue_description || formData.title,
           description: updated.remarks ?? formData.description,
@@ -224,11 +224,11 @@ const Maintenance: React.FC = () => {
         setSuccess('Maintenance updated');
       } else {
         const created = await maintenanceAPI.create(payload);
-        const equip = equipment.find(e => e.id === created.equipment);
+        const equip = equipment.find(e => e.id === created.lab_equipment);
         const mapped: MaintRow = {
           id: created.id,
-          equipment: created.equipment,
-          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${created.equipment}`,
+          equipment: created.lab_equipment!,
+          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${created.lab_equipment}`,
           lab: equip?.lab || null,
           title: created.issue_description || formData.title,
           description: created.remarks ?? formData.description,
@@ -277,189 +277,244 @@ const Maintenance: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Maintenance Logs
-      </Typography>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Maintenance Logs</h1>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Track and manage equipment maintenance records</p>
+      </div>
 
       {/* Filters */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
-            <TextField
-              label="Search"
-              placeholder="Title or description..."
+      <div className="rounded-xl border p-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 items-end">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              InputProps={{ endAdornment: <Search fontSize="small" /> }}
-              sx={{ flex: 1 }}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border text-sm"
+              style={{ 
+                backgroundColor: 'var(--bg-main)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
             />
-            <TextField select label="Lab" value={fLab} onChange={(e) => setFLab(e.target.value === '' ? '' : Number(e.target.value))} sx={{ minWidth: 180 }}>
-              <MenuItem value="">All</MenuItem>
-              {labs.map((l) => (
-                <MenuItem key={l.id} value={l.id}>{l.name}</MenuItem>
-              ))}
-            </TextField>
-            <TextField select label="Equipment" value={fEquipment} onChange={(e) => setFEquipment(e.target.value === '' ? '' : Number(e.target.value))} sx={{ minWidth: 200 }}>
-              <MenuItem value="">All</MenuItem>
-              {equipment.map((e) => (
-                <MenuItem key={e.id} value={e.id}>{e.equipment_type} - {e.brand || 'Unknown'}</MenuItem>
-              ))}
-            </TextField>
-            <TextField select label="Status" value={fStatus} onChange={(e) => setFStatus(e.target.value as any)} sx={{ minWidth: 160 }}>
-              <MenuItem value="">All</MenuItem>
-              {STATUS.map((s) => (
-                <MenuItem key={s} value={s} style={{ textTransform: 'capitalize' }}>{s}</MenuItem>
-              ))}
-            </TextField>
-            <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-            <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-            <Tooltip title="Refresh">
-              <span>
-                <IconButton onClick={loadAll} disabled={loading}>
-                  {loading ? <CircularProgress size={22} /> : <Refresh />}
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+          </div>
+          
+          <select
+            value={fLab}
+            onChange={(e) => setFLab(e.target.value === '' ? '' : Number(e.target.value))}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <option value="">All Labs</option>
+            {labs.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={fEquipment}
+            onChange={(e) => setFEquipment(e.target.value === '' ? '' : Number(e.target.value))}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <option value="">All Equipment</option>
+            {equipment.map((e) => (
+              <option key={e.id} value={e.id}>{e.equipment_type} - {e.brand || 'Unknown'}</option>
+            ))}
+          </select>
+
+          <select
+            value={fStatus}
+            onChange={(e) => setFStatus(e.target.value as any)}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <option value="">All Status</option>
+            {STATUS.map((s) => (
+              <option key={s} value={s} style={{ textTransform: 'capitalize' }}>{s}</option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          />
+
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          />
+
+          <div className="flex gap-2">
+            <button
+              onClick={loadAll}
+              disabled={loading}
+              className="p-2 rounded-lg border transition-colors"
+              style={{ 
+                backgroundColor: 'var(--hover-bg)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+              title="Refresh"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-500"></div>
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </button>
+            
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Add className="h-4 w-4" />
               {isAdmin ? 'Add Log' : 'Report Issue'}
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Table */}
-      <Card>
-        <CardContent>
+      <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+        <div className="overflow-x-auto">
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-              <CircularProgress />
-            </Box>
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-500"></div>
+            </div>
           ) : filtered.length === 0 ? (
-            <Box sx={{ textAlign: 'center', color: 'text.secondary', py: 6 }}>
-              <Typography>No maintenance logs found. Try changing filters or add a new log.</Typography>
-            </Box>
+            <div className="text-center py-12">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                No maintenance logs found. Try changing filters or add a new log.
+              </p>
+            </div>
           ) : (
-            <Box component="table" sx={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-              <Box component="thead" sx={{ backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.100' : 'grey.200' }}>
-                <Box component="tr">
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Equipment</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Lab</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Issue</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status Before</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Reported</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Fixed</Box>
-                  <Box component="th" sx={{ textAlign: 'right', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Actions</Box>
-                </Box>
-              </Box>
-              <Box component="tbody">
-                {filtered.map((row) => (
-                  <Box key={row.id} component="tr" sx={{ '&:nth-of-type(even)': { backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.50' : 'grey.100' } }}>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{row.equipment_name || `Equipment #${row.equipment}`}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{labs.find((l) => l.id === row.lab)?.name || (row.lab ?? '-')}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{row.title}</Box>
-                    <Box component="td" sx={{ p: 1.5, textTransform: 'capitalize', color: 'text.primary' }}>{row.status}</Box>
-                    <Box component="td" sx={{ p: 1.5, textTransform: 'capitalize', color: 'text.secondary' }}>{row.status_before.replace('_', ' ')}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{row.reported_on?.slice(0,10)}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{row.fixed_on ? row.fixed_on.slice(0,10) : '-'}</Box>
-                    <Box component="td" sx={{ p: 1.5, textAlign: 'right' }}>
+            <table className="w-full">
+              <thead>
+                <tr style={{ backgroundColor: 'var(--accent-bg)' }}>
+                  <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Equipment</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Lab</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Issue</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Status Before</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Reported</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Fixed</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row, index) => (
+                  <tr 
+                    key={row.id} 
+                    className="border-t transition-colors hover:bg-opacity-50"
+                    style={{ 
+                      borderColor: 'var(--border-color)',
+                      backgroundColor: index % 2 === 0 ? 'transparent' : 'var(--hover-bg)'
+                    }}
+                  >
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-primary)' }}>
+                      {row.equipment_name || `Equipment #${row.equipment}`}
+                    </td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-primary)' }}>
+                      {labs.find((l) => l.id === row.lab)?.name || (row.lab ?? '-')}
+                    </td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-primary)' }}>
+                      {row.title}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        row.status === 'fixed' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {row.status_before.replace('_', ' ')}
+                    </td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {row.reported_on?.slice(0,10)}
+                    </td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {row.fixed_on ? row.fixed_on.slice(0,10) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
                       {isAdmin && (
-                        <>
-                          <Tooltip title="Edit">
-                            <IconButton color="info" onClick={() => openEdit(row)}>
-                              <Edit />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton color="error" onClick={() => confirmDelete(row.id)}>
-                              <Delete />
-                            </IconButton>
-                          </Tooltip>
-                        </>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => openEdit(row)}
+                            className="p-1 rounded hover:bg-blue-100 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4 text-blue-600" />
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(row.id)}
+                            className="p-1 rounded hover:bg-red-100 transition-colors"
+                            title="Delete"
+                          >
+                            <Delete className="h-4 w-4 text-red-600" />
+                          </button>
+                        </div>
                       )}
-                    </Box>
-                  </Box>
+                    </td>
+                  </tr>
                 ))}
-              </Box>
-            </Box>
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="md">
-        <DialogTitle>{editingId ? 'Edit Maintenance' : (isAdmin ? 'Add Maintenance' : 'Report Issue')}</DialogTitle>
-        <Box component="form" onSubmit={handleSave}>
-          <DialogContent>
-            <Stack spacing={2}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField select label="Equipment" value={formData.equipment} onChange={(e) => {
-                  const equipId = Number(e.target.value);
-                  const selectedEquip = equipment.find(eq => eq.id === equipId);
-                  setFormData({ ...formData, equipment: equipId, status_before: selectedEquip?.status || 'working' });
-                }} required fullWidth>
-                  {equipment.map((e) => (
-                    <MenuItem key={e.id} value={e.id}>{e.equipment_type} - {e.brand || 'Unknown'} (Lab: {labs.find(l => l.id === e.lab)?.name || e.lab})</MenuItem>
-                  ))}
-                </TextField>
-                <TextField label="Issue Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required fullWidth />
-              </Stack>
-              <TextField label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} multiline minRows={3} fullWidth />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField select label="Status Before" value={formData.status_before} onChange={(e) => setFormData({ ...formData, status_before: e.target.value as any })} fullWidth>
-                  {EQUIPMENT_STATUS.map((s) => (
-                    <MenuItem key={s} value={s}>{s.replace('_', ' ')}</MenuItem>
-                  ))}
-                </TextField>
-                <TextField select label="Current Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} fullWidth disabled={!isAdmin}>
-                  {STATUS.map((s) => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
-                </TextField>
-                {formData.status === 'fixed' && (
-                  <TextField select label="Status After Fix" value={formData.status_after} onChange={(e) => setFormData({ ...formData, status_after: e.target.value as any })} fullWidth disabled={!isAdmin}>
-                    {EQUIPMENT_STATUS.map((s) => (
-                      <MenuItem key={s} value={s}>{s.replace('_', ' ')}</MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField label="Reported On" type="date" value={formData.reported_on.slice(0,10)} onChange={(e) => setFormData({ ...formData, reported_on: new Date(e.target.value).toISOString() })} InputLabelProps={{ shrink: true }} disabled={!isAdmin} />
-                <TextField label="Fixed On" type="date" value={formData.fixed_on ? formData.fixed_on.slice(0,10) : ''} onChange={(e) => setFormData({ ...formData, fixed_on: e.target.value ? new Date(e.target.value).toISOString() : null })} InputLabelProps={{ shrink: true }} disabled={!isAdmin || formData.status !== 'fixed'} />
-              </Stack>
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenForm(false)}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
-
-      {/* Delete confirm */}
-      {isAdmin && (
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>Delete Maintenance?</DialogTitle>
-        <DialogContent>
-          <Typography>Are you sure you want to delete this log? This action cannot be undone.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">Delete</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Success/Error Messages */}
+      {error && (
+        <div className="rounded-xl p-4 border" style={{ 
+          backgroundColor: '#FEE2E2', 
+          borderColor: '#FCA5A5'
+        }}>
+          <p className="text-sm" style={{ color: '#DC2626' }}>{error}</p>
+        </div>
       )}
 
-      {/* Alerts */}
-      <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
-        <Alert severity="error" onClose={() => setError('')} sx={{ whiteSpace: 'pre-line' }}>{error}</Alert>
-      </Snackbar>
-      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
-        <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>
-      </Snackbar>
-    </Box>
+      {success && (
+        <div className="rounded-xl p-4 border" style={{ 
+          backgroundColor: '#D1FAE5', 
+          borderColor: '#6EE7B7'
+        }}>
+          <p className="text-sm" style={{ color: '#065F46' }}>{success}</p>
+        </div>
+      )}
+    </div>
   );
 };
 

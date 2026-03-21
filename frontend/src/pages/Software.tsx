@@ -147,8 +147,8 @@ const Software: React.FC = () => {
       const payload: any = {
         pc: formData.pc,
         name: formData.name.trim(),
-        version: formData.version || undefined,
-        license_key: formData.license_key || undefined,
+        version: formData.version.trim() || undefined,
+        license_key: formData.license_key.trim() || undefined,
         expiry_date: formData.expiry_date || undefined,
       };
       if (editingId) {

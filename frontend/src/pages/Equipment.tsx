@@ -25,41 +25,41 @@ import {
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
-import { equipmentAPI, labsAPI } from '../services/api';
-import type { Equipment as EquipmentType, Lab } from '../types';
+import { labEquipmentAPI, labsAPI } from '../services/api';
+import type { LabEquipment, Lab } from '../types';
  
 
 const EQUIPMENT_TYPES = [
-  'PC', 'MONITOR', 'KEYBOARD', 'MOUSE', 'ROUTER', 'SWITCH', 'SERVER', 'FAN', 'LIGHT', 'OTHER',
+  'SERVER', 'ROUTER', 'SWITCH', 'HUB', 'PROJECTOR', 'E_BOARD', 'AC', 'FAN', 'LIGHT', 'UPS', 'OTHER',
 ] as const;
 const STATUS = ['working', 'not_working', 'under_repair'] as const;
 
 type EquipmentForm = {
   lab: number | '';
+  name: string;
+  equipment_code: string;
   equipment_type: (typeof EQUIPMENT_TYPES)[number] | '';
   brand: string;
   model_name: string;
-  serial_number: string;
   location_in_lab: string;
-  price: string;
   status: (typeof STATUS)[number] | '';
 };
 
 const emptyForm: EquipmentForm = {
   lab: '',
+  name: '',
+  equipment_code: '',
   equipment_type: '',
   brand: '',
   model_name: '',
-  serial_number: '',
   location_in_lab: '',
-  price: '',
   status: 'working',
 };
 
 const Equipment: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [items, setItems] = useState<EquipmentType[]>([]);
+  const [items, setItems] = useState<LabEquipment[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,7 +87,7 @@ const Equipment: React.FC = () => {
       setError('');
 
       const [eqps, labsData] = await Promise.all([
-        equipmentAPI.getAll(),
+        labEquipmentAPI.getAll(),
         labsAPI.getAll(),
       ]);
       // Extract results from paginated responses (or plain arrays)
@@ -113,7 +113,7 @@ const Equipment: React.FC = () => {
       const matchLab = fLab ? it.lab === fLab : true;
       const matchType = fType ? it.equipment_type === fType : true;
       const matchStatus = fStatus ? it.status === fStatus : true;
-      const text = `${it.brand ?? ''} ${it.model_name ?? ''} ${it.serial_number ?? ''}`.toLowerCase();
+      const text = `${it.brand ?? ''} ${it.model_name ?? ''}`.toLowerCase();
       const matchQ = q ? text.includes(q.toLowerCase()) : true;
       return matchLab && matchType && matchStatus && matchQ;
     });
@@ -125,16 +125,16 @@ const Equipment: React.FC = () => {
     setOpenForm(true);
   };
 
-  const openEdit = (row: EquipmentType) => {
+  const openEdit = (row: LabEquipment) => {
     setEditingId(row.id);
     setFormData({
       lab: row.lab,
+      name: row.name || '',
+      equipment_code: row.equipment_code,
       equipment_type: row.equipment_type,
       brand: row.brand || '',
       model_name: row.model_name || '',
-      serial_number: row.serial_number || '',
       location_in_lab: row.location_in_lab || '',
-      price: row.price ? String(row.price) : '',
       status: row.status,
     });
     setOpenForm(true);
@@ -142,28 +142,28 @@ const Equipment: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.lab || !formData.equipment_type) {
-      setError('Lab and equipment type are required');
+    if (!formData.lab || !formData.equipment_type || !formData.name.trim() || !formData.equipment_code.trim()) {
+      setError('Lab, equipment type, name, and equipment code are required');
       return;
     }
     try {
       setSaving(true);
       const payload = {
         lab: formData.lab,
+        name: formData.name.trim(),
+        equipment_code: formData.equipment_code.trim(),
         equipment_type: formData.equipment_type,
         brand: formData.brand || undefined,
         model_name: formData.model_name || undefined,
-        serial_number: formData.serial_number || undefined,
         location_in_lab: formData.location_in_lab || undefined,
-        price: formData.price ? Number(formData.price) : undefined,
         status: formData.status || 'working',
       };
       if (editingId) {
-        const updated = await equipmentAPI.update(editingId, payload);
+        const updated = await labEquipmentAPI.update(editingId, payload);
         setItems((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
         setSuccess('Equipment updated');
       } else {
-        const created = await equipmentAPI.create(payload as any);
+        const created = await labEquipmentAPI.create(payload as any);
         setItems((prev) => [created, ...prev]);
         setSuccess('Equipment created');
       }
@@ -191,7 +191,7 @@ const Equipment: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await equipmentAPI.delete(deleteId);
+      await labEquipmentAPI.delete(deleteId);
       setItems((prev) => prev.filter((x) => x.id !== deleteId));
       setSuccess('Equipment deleted');
     } catch (e) {
@@ -214,7 +214,7 @@ const Equipment: React.FC = () => {
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
             <TextField
               label="Search"
-              placeholder="Brand, model or serial..."
+              placeholder="Brand or model..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
               InputProps={{
@@ -283,7 +283,7 @@ const Equipment: React.FC = () => {
       ) : (
         <Grid container spacing={3}>
           {filtered.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
+            <Grid item xs={12} sm={6} md={4} size={{ xs: 12, sm: 6, md: 4 }} key={item.id}>
               <Card
                 sx={{
                   height: '100%',
@@ -316,9 +316,6 @@ const Equipment: React.FC = () => {
                   <Divider sx={{ my: 1.5 }} />
                   <Typography variant="body2">
                     <strong>Lab:</strong> {labs.find(l => l.id === item.lab)?.name || 'N/A'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Serial:</strong> {item.serial_number || '-'}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Location:</strong> {item.location_in_lab || '-'}
@@ -364,15 +361,15 @@ const Equipment: React.FC = () => {
                 </TextField>
               </Stack>
               <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                <TextField label="Equipment Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required fullWidth />
+                <TextField label="Equipment Code" value={formData.equipment_code} onChange={(e) => setFormData({ ...formData, equipment_code: e.target.value })} required fullWidth />
+              </Stack>
+              <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
                 <TextField label="Brand" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} fullWidth />
                 <TextField label="Model" value={formData.model_name} onChange={(e) => setFormData({ ...formData, model_name: e.target.value })} fullWidth />
               </Stack>
               <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-                <TextField label="Serial" value={formData.serial_number} onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} fullWidth />
                 <TextField label="Location" value={formData.location_in_lab} onChange={(e) => setFormData({ ...formData, location_in_lab: e.target.value })} fullWidth />
-              </Stack>
-              <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-                <TextField label="Price" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} fullWidth />
                 <TextField select label="Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} fullWidth>
                   {STATUS.map((s) => (
                     <MenuItem key={s} value={s} style={{ textTransform: 'capitalize' }}>{s.replace('_', ' ')}</MenuItem>
