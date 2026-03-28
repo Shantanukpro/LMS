@@ -25,9 +25,26 @@ import { Add, ArrowBack, Delete, Edit, Refresh } from '@mui/icons-material';
 import { labsAPI, pcsAPI } from '../services/api';
 import type { Lab, PC } from '../types';
 
-const emptyPC = { name: '', status: 'working', brand: '', serial_number: '' };
+const emptyPC = { device_name: '', status: 'working', brand: '', serial_number: '', processor: '', ram: '', storage: '' };
 
 type PCForm = typeof emptyPC;
+
+const getPeripheral = (pc: PC, type: string) => {
+  const p = pc.peripheral_devices?.find(d => d.peripheral_type === type);
+  if (!p) return '-';
+  return p.status === 'working' ? '✅ Working' : '❌ Not Working';
+};
+
+const getStatusBadge = (status: string) => {
+  const s = status?.toLowerCase() || '';
+  if (s === 'working') {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">Working</span>;
+  }
+  if (s === 'not_working') {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50">Not Working</span>;
+  }
+  return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 capitalize">{status.replace('_', ' ')}</span>;
+};
 
 const LabDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -57,9 +74,7 @@ const LabDetail: React.FC = () => {
         pcsAPI.getByLab(labId),
       ]);
       setLab(labData);
-      // Extract results from paginated response if needed
-      const pcsArray = Array.isArray(pcData?.results) ? pcData.results : Array.isArray(pcData) ? pcData : [];
-      setPcs(pcsArray);
+      setPcs(Array.isArray(pcData) ? pcData : []);
     } catch (e: any) {
       console.error('Failed to load lab or PCs:', e);
       setError(e?.response?.data?.detail || 'Failed to load lab details. Please check your connection and try again.');
@@ -82,17 +97,20 @@ const LabDetail: React.FC = () => {
   const handleOpenEdit = (pc: PC) => {
     setEditingId(pc.id);
     setFormData({
-      name: pc.name,
+      device_name: pc.device_name || '',
       status: pc.status,
       brand: pc.brand || '',
       serial_number: pc.serial_number || '',
+      processor: pc.processor || '',
+      ram: pc.ram || '',
+      storage: pc.storage || '',
     });
     setOpenForm(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
+    if (!formData.device_name.trim()) {
       setError('PC name is required');
       return;
     }
@@ -100,27 +118,46 @@ const LabDetail: React.FC = () => {
       setSaving(true);
       if (editingId) {
         const updated = await pcsAPI.update(editingId, {
-          device_name: formData.name.trim(),
-          status: formData.status,
+          device_name: formData.device_name.trim(),
+          status: formData.status as any,
           brand: formData.brand?.trim() || undefined,
           serial_number: formData.serial_number?.trim() || undefined,
+          processor: formData.processor?.trim() || undefined,
+          ram: formData.ram?.trim() || undefined,
+          storage: formData.storage?.trim() || undefined,
         });
         setPcs((prev) => prev.map((p) => (p.id === editingId ? updated : p)));
         setSuccess('PC updated successfully');
       } else {
         const created = await pcsAPI.create(labId, {
-          device_name: formData.name.trim(),
-          status: formData.status,
+          device_name: formData.device_name.trim(),
+          status: formData.status as any,
           brand: formData.brand?.trim() || undefined,
           serial_number: formData.serial_number?.trim() || undefined,
+          processor: formData.processor?.trim() || undefined,
+          ram: formData.ram?.trim() || undefined,
+          storage: formData.storage?.trim() || undefined,
         });
         setPcs((prev) => [created, ...prev]);
         setSuccess('PC created successfully');
       }
       setOpenForm(false);
     } catch (e: any) {
-      const detail = e?.response?.data || 'Save failed';
-      setError(typeof detail === 'string' ? detail : 'Save failed');
+      const data = e?.response?.data;
+      if (data) {
+        if (typeof data === 'string') {
+           setError(data);
+        } else {
+           const msgs: string[] = [];
+           Object.entries(data).forEach(([k, v]) => {
+             if (Array.isArray(v)) msgs.push(`${k}: ${v.join(' ')}`);
+             else if (typeof v === 'string') msgs.push(`${k}: ${v}`);
+           });
+           setError(msgs.join('\n') || 'Save failed');
+        }
+      } else {
+        setError('Save failed');
+      }
     } finally {
       setSaving(false);
     }
@@ -183,49 +220,72 @@ const LabDetail: React.FC = () => {
             </Stack>
           </Box>
 
-          <Card>
-            <CardContent>
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
+            <div className="overflow-x-auto">
               {rows.length === 0 ? (
-                <Box sx={{ textAlign: 'center', color: 'text.secondary', py: 6 }}>
+                <div className="p-8 text-center text-[var(--text-secondary)]">
                   <Typography variant="body1">No PCs found. Click "Add PC" to create one.</Typography>
-                </Box>
+                </div>
               ) : (
-                <Box component="table" sx={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                  <Box component="thead" sx={{ backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.100' : 'grey.200' }}>
-                    <Box component="tr">
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Name</Box>
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status</Box>
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Brand</Box>
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Serial No.</Box>
-                      <Box component="th" sx={{ textAlign: 'right', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Actions</Box>
-                    </Box>
-                  </Box>
-                  <Box component="tbody">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+                    <tr>
+                      <th className="px-6 py-4 whitespace-nowrap">PC Name (COMP ID)</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Brand</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Processor</th>
+                      <th className="px-6 py-4 whitespace-nowrap">RAM</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Storage</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Graphics Card</th>
+                      <th className="px-6 py-4 whitespace-nowrap">CPU</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Keyboard</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Mouse</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                      <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-color)]">
                     {rows.map((pc) => (
-                      <Box component="tr" key={pc.id} sx={{ '&:nth-of-type(even)': { backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.50' : 'grey.100' } }}>
-                        <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{pc.name}</Box>
-                        <Box component="td" sx={{ p: 1.5, textTransform: 'capitalize', color: 'text.primary' }}>{pc.status}</Box>
-                        <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{pc.brand || '-'}</Box>
-                        <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{pc.serial_number || '-'}</Box>
-                        <Box component="td" sx={{ p: 1.5, textAlign: 'right' }}>
-                          <Tooltip title="Edit">
-                            <IconButton color="info" onClick={() => handleOpenEdit(pc)}>
-                              <Edit />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton color="error" onClick={() => confirmDelete(pc.id)}>
-                              <Delete />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </Box>
+                      <tr 
+                        key={pc.id} 
+                        className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
+                      >
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-primary)] font-medium">{pc.device_name || '-'}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.brand || '-'}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.processor || '-'}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.ram || '-'}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.storage || '-'}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.gpu ? 'Yes' : 'No'}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.cpu?.model || '-'}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{getPeripheral(pc, 'keyboard')}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{getPeripheral(pc, 'mouse')}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(pc.status)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            <Tooltip title="Edit">
+                              <button
+                                onClick={() => handleOpenEdit(pc)}
+                                className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                              >
+                                <Edit fontSize="small" />
+                              </button>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <button
+                                onClick={() => confirmDelete(pc.id)}
+                                className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                              >
+                                <Delete fontSize="small" />
+                              </button>
+                            </Tooltip>
+                          </Stack>
+                        </td>
+                      </tr>
                     ))}
-                  </Box>
-                </Box>
+                  </tbody>
+                </table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
 
@@ -236,21 +296,12 @@ const LabDetail: React.FC = () => {
           <DialogContent>
             <Stack spacing={2}>
               <TextField
-                label="Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                label="PC Name (COMP ID)"
+                value={formData.device_name}
+                onChange={(e) => setFormData({ ...formData, device_name: e.target.value })}
                 required
                 autoFocus
               />
-              <TextField
-                label="Status"
-                select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              >
-                <MenuItem value="working">Working</MenuItem>
-                <MenuItem value="not_working">Not Working</MenuItem>
-              </TextField>
               <TextField
                 label="Brand"
                 value={formData.brand}
@@ -261,6 +312,30 @@ const LabDetail: React.FC = () => {
                 value={formData.serial_number}
                 onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
               />
+              <TextField
+                label="Processor"
+                value={formData.processor}
+                onChange={(e) => setFormData({ ...formData, processor: e.target.value })}
+              />
+              <TextField
+                label="RAM"
+                value={formData.ram}
+                onChange={(e) => setFormData({ ...formData, ram: e.target.value })}
+              />
+              <TextField
+                label="Storage"
+                value={formData.storage}
+                onChange={(e) => setFormData({ ...formData, storage: e.target.value })}
+              />
+              <TextField
+                label="Status"
+                select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              >
+                <MenuItem value="working">Working</MenuItem>
+                <MenuItem value="not_working">Not Working</MenuItem>
+              </TextField>
             </Stack>
           </DialogContent>
           <DialogActions>

@@ -161,37 +161,42 @@ const Inventory: React.FC = () => {
           </Card>
 
           {/* Per-Lab Table */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>By Lab</Typography>
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
+            <div className="px-6 py-4 border-b border-[var(--border-color)]">
+              <Typography variant="h6" className="text-[var(--text-primary)]">By Lab</Typography>
+            </div>
+            <div className="overflow-x-auto">
               {Object.keys(byLab).length === 0 ? (
-                <Typography color="text.secondary">No data</Typography>
+                <div className="p-8 text-center text-[var(--text-secondary)]">No data</div>
               ) : (
-                <Box component="table" sx={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                  <Box component="thead" sx={{ backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.100' : 'grey.200' }}>
-                    <Box component="tr">
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Lab</Box>
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Total</Box>
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Working</Box>
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Not Working</Box>
-                      <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Under Repair</Box>
-                    </Box>
-                  </Box>
-                  <Box component="tbody">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+                    <tr>
+                      <th className="px-6 py-4 whitespace-nowrap">Lab</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Total</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Working</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Not Working</th>
+                      <th className="px-6 py-4 whitespace-nowrap">Under Repair</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-color)]">
                     {Object.entries(byLab).map(([lab, agg]) => (
-                      <Box key={lab} component="tr" sx={{ '&:nth-of-type(even)': { backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.50' : 'grey.100' } }}>
-                        <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>Lab {lab}</Box>
-                        <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{agg.total}</Box>
-                        <Box component="td" sx={{ p: 1.5, color: 'success.main' }}>{agg.working}</Box>
-                        <Box component="td" sx={{ p: 1.5, color: 'error.main' }}>{agg.not_working}</Box>
-                        <Box component="td" sx={{ p: 1.5, color: 'warning.main' }}>{agg.under_repair}</Box>
-                      </Box>
+                      <tr 
+                        key={lab} 
+                        className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
+                      >
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-primary)] font-medium">Lab {lab}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-primary)] font-medium">{agg.total}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-emerald-600 dark:text-emerald-400 font-medium">{agg.working}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-rose-600 dark:text-rose-400 font-medium">{agg.not_working}</td>
+                        <td className="px-6 py-4 text-sm whitespace-nowrap text-amber-600 dark:text-amber-400 font-medium">{agg.under_repair}</td>
+                      </tr>
                     ))}
-                  </Box>
-                </Box>
+                  </tbody>
+                </table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
     </Box>

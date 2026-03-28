@@ -8,6 +8,13 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
+// Helper to extract results from DRF paginated responses
+const extractResults = <T>(data: any): T[] => {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.results)) return data.results;
+  return [];
+};
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -78,12 +85,12 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (refreshError) {
           clearTokens();
-          // Avoid hard redirect to prevent flicker; let app routing handle it
+          window.location.href = '/login';
           return Promise.reject(refreshError);
         }
       } else {
         clearTokens();
-        // No refresh token available; let caller handle navigation
+        window.location.href = '/login';
         return Promise.reject(error);
       }
     }
@@ -115,7 +122,7 @@ export const authAPI = {
 export const labsAPI = {
   getAll: async (): Promise<Lab[]> => {
     const response = await api.get('/labs/');
-    return response.data;
+    return extractResults<Lab>(response.data);
   },
   
   getById: async (id: number): Promise<Lab> => {
@@ -142,7 +149,7 @@ export const labsAPI = {
 export const labEquipmentAPI = {
   getAll: async (): Promise<LabEquipment[]> => {
     const response = await api.get('/lab-equipment/');
-    return response.data;
+    return extractResults<LabEquipment>(response.data);
   },
 
   getById: async (id: number): Promise<LabEquipment> => {
@@ -152,7 +159,7 @@ export const labEquipmentAPI = {
 
   getByLab: async (labId: number): Promise<LabEquipment[]> => {
     const response = await api.get(`/labs/${labId}/equipment/`);
-    return response.data;
+    return extractResults<LabEquipment>(response.data);
   },
 
   create: async (data: Partial<LabEquipment>): Promise<LabEquipment> => {
@@ -198,12 +205,12 @@ export const labEquipmentAPI = {
 export const pcsAPI = {
   getAll: async (): Promise<PC[]> => {
     const response = await api.get('/pcs/');
-    return response.data;
+    return extractResults<PC>(response.data);
   },
 
   getByLab: async (labId: number): Promise<PC[]> => {
     const response = await api.get(`/labs/${labId}/pcs/`);
-    return response.data;
+    return extractResults<PC>(response.data);
   },
   
   getById: async (id: number): Promise<PC> => {
@@ -211,8 +218,8 @@ export const pcsAPI = {
     return response.data;
   },
   
-  create: async (labId: number, data: Omit<PC, 'id' | 'lab' | 'created_at' | 'updated_at'>): Promise<PC> => {
-    const response = await api.post(`/labs/${labId}/pcs/`, data);
+  create: async (labId: number, data: Partial<PC>): Promise<PC> => {
+    const response = await api.post(`/labs/${labId}/pcs/`, { ...data, lab: labId });
     return response.data;
   },
   
@@ -250,7 +257,7 @@ export const pcsAPI = {
   // Peripherals management
   getPeripherals: async (pcId: number): Promise<Peripheral[]> => {
     const response = await api.get(`/pcs/${pcId}/peripherals/`);
-    return response.data;
+    return extractResults<Peripheral>(response.data);
   },
 
   addPeripheral: async (pcId: number, data: Omit<Peripheral, 'id' | 'pc' | 'created_at' | 'updated_at'>): Promise<Peripheral> => {
@@ -273,12 +280,12 @@ export const pcsAPI = {
 export const softwareAPI = {
   getByPC: async (pcId: number): Promise<Software[]> => {
     const response = await api.get(`/pcs/${pcId}/software/`);
-    return response.data;
+    return extractResults<Software>(response.data);
   },
   
   getAll: async (): Promise<Software[]> => {
     const response = await api.get('/software/');
-    return response.data;
+    return extractResults<Software>(response.data);
   },
   
   getById: async (id: number): Promise<Software> => {
@@ -305,22 +312,22 @@ export const softwareAPI = {
 export const maintenanceAPI = {
   getAll: async (): Promise<MaintenanceLog[]> => {
     const response = await api.get('/maintenance/');
-    return response.data;
+    return extractResults<MaintenanceLog>(response.data);
   },
 
   getByLab: async (labId: number): Promise<MaintenanceLog[]> => {
     const response = await api.get(`/labs/${labId}/maintenance/`);
-    return response.data;
+    return extractResults<MaintenanceLog>(response.data);
   },
 
   getByPC: async (pcId: number): Promise<MaintenanceLog[]> => {
     const response = await api.get(`/pcs/${pcId}/maintenance/`);
-    return response.data;
+    return extractResults<MaintenanceLog>(response.data);
   },
 
   getByEquipment: async (equipmentId: number): Promise<MaintenanceLog[]> => {
     const response = await api.get(`/lab-equipment/${equipmentId}/maintenance/`);
-    return response.data;
+    return extractResults<MaintenanceLog>(response.data);
   },
   
   getById: async (id: number): Promise<MaintenanceLog> => {

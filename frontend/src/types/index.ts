@@ -17,7 +17,7 @@ export interface Lab {
 export interface PC {
   id: number;
   lab: number;
-  name: string;
+  name?: string;
   pc_code: string;
   device_name?: string;
   product_id?: string;
@@ -32,6 +32,8 @@ export interface PC {
   serial_number?: string;
   created_at: string;
   updated_at: string;
+  cpu?: CPU;
+  peripheral_devices?: Peripheral[];
 }
 
 // Lab Equipment Types

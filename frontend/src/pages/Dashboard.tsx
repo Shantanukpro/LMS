@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Monitor, Server, Wrench, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+  Monitor,
+  Server,
+  Wrench,
+  AlertTriangle,
+  CheckCircle,
+  Building2,
+  TrendingUp,
+  Activity,
+} from 'lucide-react';
 import { labEquipmentAPI, labsAPI, maintenanceAPI, pcsAPI } from '../services/api';
 import type { LabEquipment, Lab, MaintenanceLog, PC } from '../types';
 
+// ── Types ─────────────────────────────────────
 interface DashboardStats {
   totalLabs: number;
   totalEquipment: number;
@@ -14,6 +24,71 @@ interface DashboardStats {
   workingPCs: number;
 }
 
+// ── Stat Card ─────────────────────────────────
+interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  iconBg: string;         // Tailwind bg class for the icon circle
+  trend?: string;          // optional sub-text e.g. "of 24 total"
+  accentBar?: string;      // top accent bar colour class
+}
+
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, iconBg, trend, accentBar }) => (
+  <div className="
+    relative bg-white dark:bg-gray-900
+    border border-gray-100 dark:border-gray-800
+    rounded-2xl p-5
+    shadow-[0_1px_3px_rgba(0,0,0,0.05)]
+    hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)]
+    hover:-translate-y-0.5
+    transition-all duration-200 ease-out
+    overflow-hidden
+    group
+  ">
+    {/* Top accent line */}
+    {accentBar && (
+      <div className={`absolute top-0 left-0 right-0 h-0.5 ${accentBar} opacity-80 group-hover:opacity-100 transition-opacity`} />
+    )}
+
+    <div className="flex items-start justify-between">
+      {/* Icon */}
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        {icon}
+      </div>
+
+      {/* Value */}
+      <span className="text-3xl font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none mt-0.5">
+        {value}
+      </span>
+    </div>
+
+    {/* Label */}
+    <div className="mt-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        {title}
+      </p>
+      {trend && (
+        <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">{trend}</p>
+      )}
+    </div>
+  </div>
+);
+
+// ── Skeleton loader ─────────────────────────────
+const SkeletonCard = () => (
+  <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 animate-pulse">
+    <div className="flex items-start justify-between">
+      <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
+      <div className="w-12 h-8 rounded-lg bg-gray-100 dark:bg-gray-800" />
+    </div>
+    <div className="mt-4 space-y-2">
+      <div className="h-2.5 w-20 rounded bg-gray-100 dark:bg-gray-800" />
+    </div>
+  </div>
+);
+
+// ── Dashboard ──────────────────────────────────
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalLabs: 0,
@@ -26,8 +101,7 @@ const Dashboard: React.FC = () => {
     workingPCs: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
+  const [error, setError]     = useState('');
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -35,163 +109,128 @@ const Dashboard: React.FC = () => {
         setLoading(true);
         setError('');
 
-        // Fetch all data in parallel
-        const [labs, equipment, pcs, maintenance] = await Promise.all<[
-          any,
-          any,
-          any,
-          any
-        ]>([
+        const [labs, equipment, pcs, maintenance] = await Promise.all<[any, any, any, any]>([
           labsAPI.getAll(),
           labEquipmentAPI.getAll(),
           pcsAPI.getAll(),
           maintenanceAPI.getAll(),
         ]);
 
-        // Extract results from paginated responses
-        const labsArray = (Array.isArray(labs) ? labs : (labs?.results ?? [])) as Lab[];
-        const equipmentArray = (Array.isArray(equipment) ? equipment : (equipment?.results ?? [])) as LabEquipment[];
-        const pcsArray = (Array.isArray(pcs) ? pcs : (pcs?.results ?? [])) as PC[];
-        const maintenanceArray = (Array.isArray(maintenance) ? maintenance : (maintenance?.results ?? [])) as MaintenanceLog[];
+        const toArr = (d: any) =>
+          Array.isArray(d) ? d : (d?.results ?? []);
 
-        // Calculate stats from actual equipment data
-        const totalLabs = labsArray.length;
-        const totalEquipment = equipmentArray.length;
-        const workingEquipment = equipmentArray.filter((item: LabEquipment) => item.status === 'working').length;
-        const notWorkingEquipment = equipmentArray.filter((item: LabEquipment) => item.status === 'not_working').length;
-        const underRepairEquipment = equipmentArray.filter((item: LabEquipment) => item.status === 'under_repair').length;
-        const totalPCs = pcsArray.length;
-        const workingPCs = pcsArray.filter((item: PC) => item.status === 'working').length;
-        const pendingMaintenance = maintenanceArray.filter((log: MaintenanceLog) => log.status === 'pending').length;
+        const labsArray:        Lab[]            = toArr(labs);
+        const equipmentArray:   LabEquipment[]   = toArr(equipment);
+        const pcsArray:         PC[]             = toArr(pcs);
+        const maintenanceArray: MaintenanceLog[] = toArr(maintenance);
 
         setStats({
-          totalLabs,
-          totalEquipment,
-          workingEquipment,
-          notWorkingEquipment,
-          underRepairEquipment,
-          pendingMaintenance,
-          totalPCs,
-          workingPCs,
+          totalLabs:            labsArray.length,
+          totalEquipment:       equipmentArray.length,
+          workingEquipment:     equipmentArray.filter(i => i.status === 'working').length,
+          notWorkingEquipment:  equipmentArray.filter(i => i.status === 'not_working').length,
+          underRepairEquipment: equipmentArray.filter(i => i.status === 'under_repair').length,
+          totalPCs:             pcsArray.length,
+          workingPCs:           pcsArray.filter(i => i.status === 'working').length,
+          pendingMaintenance:   maintenanceArray.filter(i => i.status === 'pending').length,
         });
-
       } catch (err: any) {
         console.error('Dashboard error:', err);
-        setError(err?.response?.data?.detail || 'Failed to load dashboard data. Please check your connection and try again.');
+        setError(err?.response?.data?.detail || 'Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, []);
 
-  const StatCard: React.FC<{
-    title: string;
-    value: number;
-    icon: React.ReactNode;
-    color: 'blue' | 'green' | 'purple' | 'amber' | 'red' | 'orange';
-  }> = ({ title, value, icon, color }) => {
-    const colorClasses = {
-      blue: 'from-blue-500 to-blue-600',
-      green: 'from-green-500 to-green-600',
-      purple: 'from-purple-500 to-purple-600',
-      amber: 'from-amber-500 to-amber-600',
-      red: 'from-red-500 to-red-600',
-      orange: 'from-orange-500 to-orange-600',
-    };
-
-    return (
-      <div className="rounded-2xl p-6 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg border" 
-           style={{ 
-             backgroundColor: 'var(--card-bg)', 
-             borderColor: 'var(--border-color)',
-             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
-           }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className={`w-12 h-12 bg-gradient-to-r ${colorClasses[color]} rounded-xl flex items-center justify-center`}>
-            {icon}
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{value}</p>
-          </div>
-        </div>
-        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{title}</p>
-      </div>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]" style={{ backgroundColor: 'var(--bg-main)' }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl p-4 mb-6 border" style={{ 
-        backgroundColor: '#FEE2E2', 
-        borderColor: '#FCA5A5'
-      }}>
-        <p className="text-sm" style={{ color: '#DC2626' }}>{error}</p>
-      </div>
-    );
-  }
+  // ── Card definitions (no fake data — values come from stats) ──
+  const cards: StatCardProps[] = [
+    {
+      title:     'Total Labs',
+      value:     stats.totalLabs,
+      icon:      <Building2  size={18} className="text-indigo-600" />,
+      iconBg:    'bg-indigo-50 dark:bg-indigo-900/30',
+      accentBar: 'bg-indigo-400',
+    },
+    {
+      title:     'Total PCs',
+      value:     stats.totalPCs,
+      icon:      <Monitor    size={18} className="text-blue-600" />,
+      iconBg:    'bg-blue-50 dark:bg-blue-900/30',
+      trend:     `${stats.workingPCs} working`,
+      accentBar: 'bg-blue-400',
+    },
+    {
+      title:     'Working PCs',
+      value:     stats.workingPCs,
+      icon:      <CheckCircle size={18} className="text-emerald-600" />,
+      iconBg:    'bg-emerald-50 dark:bg-emerald-900/30',
+      accentBar: 'bg-emerald-400',
+    },
+    {
+      title:     'Total Equipment',
+      value:     stats.totalEquipment,
+      icon:      <Server     size={18} className="text-purple-600" />,
+      iconBg:    'bg-purple-50 dark:bg-purple-900/30',
+      trend:     `${stats.workingEquipment} working`,
+      accentBar: 'bg-purple-400',
+    },
+    {
+      title:     'Working Equipment',
+      value:     stats.workingEquipment,
+      icon:      <Activity   size={18} className="text-teal-600" />,
+      iconBg:    'bg-teal-50 dark:bg-teal-900/30',
+      accentBar: 'bg-teal-400',
+    },
+    {
+      title:     'Not Working',
+      value:     stats.notWorkingEquipment,
+      icon:      <AlertTriangle size={18} className="text-red-600" />,
+      iconBg:    'bg-red-50 dark:bg-red-900/30',
+      accentBar: 'bg-red-400',
+    },
+    {
+      title:     'Under Repair',
+      value:     stats.underRepairEquipment,
+      icon:      <Wrench     size={18} className="text-amber-600" />,
+      iconBg:    'bg-amber-50 dark:bg-amber-900/30',
+      accentBar: 'bg-amber-400',
+    },
+    {
+      title:     'Pending Maintenance',
+      value:     stats.pendingMaintenance,
+      icon:      <TrendingUp size={18} className="text-orange-600" />,
+      iconBg:    'bg-orange-50 dark:bg-orange-900/30',
+      accentBar: 'bg-orange-400',
+    },
+  ];
 
   return (
-    <div className="space-y-8">
-      {/* Dashboard Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Monitor and manage your lab infrastructure and resources</p>
+    <div className="animate-fade-in space-y-7">
+      {/* ── Page header ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Overview of your lab infrastructure</p>
+        </div>
+        {/* You can add a refresh button or date here if needed */}
       </div>
 
-      {/* Statistics Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <StatCard
-          title="Total PCs"
-          value={stats.totalPCs}
-          icon={<Monitor className="h-6 w-6 text-white" />}
-          color="blue"
-        />
-        <StatCard
-          title="Working PCs"
-          value={stats.workingPCs}
-          icon={<CheckCircle className="h-6 w-6 text-white" />}
-          color="green"
-        />
-        <StatCard
-          title="Total Equipment"
-          value={stats.totalEquipment}
-          icon={<Server className="h-6 w-6 text-white" />}
-          color="purple"
-        />
-        <StatCard
-          title="Working Equipment"
-          value={stats.workingEquipment}
-          icon={<CheckCircle className="h-6 w-6 text-white" />}
-          color="green"
-        />
-        <StatCard
-          title="Not Working Equipment"
-          value={stats.notWorkingEquipment}
-          icon={<AlertTriangle className="h-6 w-6 text-white" />}
-          color="red"
-        />
-        <StatCard
-          title="Under Repair Equipment"
-          value={stats.underRepairEquipment}
-          icon={<Wrench className="h-6 w-6 text-white" />}
-          color="amber"
-        />
-        <StatCard
-          title="Pending Maintenance"
-          value={stats.pendingMaintenance}
-          icon={<AlertTriangle className="h-6 w-6 text-white" />}
-          color="orange"
-        />
+      {/* ── Error state ── */}
+      {error && !loading && (
+        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
+          <AlertTriangle size={16} className="flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* ── Stat cards grid ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        {loading
+          ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
+          : cards.map(card => <StatCard key={card.title} {...card} />)
+        }
       </div>
     </div>
   );

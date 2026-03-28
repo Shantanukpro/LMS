@@ -11,14 +11,36 @@ const getStatusChip = (status: string) => {
   const normalizedStatus = status?.toLowerCase() || '';
 
   if (normalizedStatus === 'working') {
-    return <Chip label="Working" color="success" size="small" />;
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
+        Working
+      </span>
+    );
   } else if (normalizedStatus === 'not_working') {
-    return <Chip label="Not Working" color="error" size="small" />;
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50">
+        Not Working
+      </span>
+    );
   } else if (normalizedStatus === 'under_repair') {
-    return <Chip label="Under Repair" color="warning" size="small" />;
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
+        Under Repair
+      </span>
+    );
   } else {
-    return <Chip label={status || 'Unknown'} color="default" size="small" />;
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+        {status || 'Unknown'}
+      </span>
+    );
   }
+};
+
+const getPeripheral = (pc: PC, type: string) => {
+  const p = pc.peripheral_devices?.find(d => d.peripheral_type === type);
+  if (!p) return '-';
+  return p.status === 'working' ? '✅ Working' : '❌ Not Working';
 };
 
 const PCs: React.FC = () => {
@@ -39,7 +61,7 @@ const PCs: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
+    device_name: '',
     pc_code: '',
     brand: '',
     serial_number: '',
@@ -53,7 +75,7 @@ const PCs: React.FC = () => {
   });
 
   const emptyForm = {
-    name: '',
+    device_name: '',
     pc_code: '',
     brand: '',
     serial_number: '',
@@ -72,17 +94,13 @@ const PCs: React.FC = () => {
       setError('');
 
       const labsData = await labsAPI.getAll();
-      // Extract results from paginated response
-      const labsArray = Array.isArray(labsData) ? labsData : [];
-      setLabs(labsArray);
+      setLabs(labsData);
 
       const all: PC[] = [];
-      for (const lab of labsArray) {
+      for (const lab of labsData) {
         try {
           const labPcs = await pcsAPI.getByLab(lab.id);
-          // Extract results from paginated response if needed
-          const pcsArray = Array.isArray(labPcs) ? labPcs : [];
-          all.push(...pcsArray);
+          all.push(...labPcs);
         } catch (err) {
           console.warn(`Failed to load PCs for lab ${lab.id}:`, err);
         }
@@ -101,7 +119,7 @@ const PCs: React.FC = () => {
   const filtered = useMemo(() => {
     return pcs.filter((p) => {
       const matchLab = fLab ? p.lab === fLab : true;
-      const text = `${p.name ?? ''} ${p.brand ?? ''} ${p.serial_number ?? ''}`.toLowerCase();
+      const text = `${p.device_name ?? ''} ${p.brand ?? ''} ${p.serial_number ?? ''}`.toLowerCase();
       const matchQ = q ? text.includes(q.toLowerCase()) : true;
       const matchStatus = fStatus ? (p.status || '').toLowerCase() === fStatus : true;
       return matchLab && matchQ && matchStatus;
@@ -146,7 +164,7 @@ const PCs: React.FC = () => {
   const openEdit = (pc: PC) => {
     setEditingId(pc.id);
     setFormData({
-      name: pc.name || '',
+      device_name: pc.device_name || '',
       pc_code: pc.pc_code || '',
       brand: pc.brand || '',
       serial_number: pc.serial_number || '',
@@ -163,7 +181,7 @@ const PCs: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.pc_code.trim()) {
+    if (!formData.device_name.trim() || !formData.pc_code.trim()) {
       setError('PC name and PC code are required');
       return;
     }
@@ -171,7 +189,7 @@ const PCs: React.FC = () => {
     try {
       setSaving(true);
       const payload = {
-        name: formData.name.trim(),
+        device_name: formData.device_name.trim(),
         pc_code: formData.pc_code.trim(),
         brand: formData.brand || undefined,
         serial_number: formData.serial_number || undefined,
@@ -216,12 +234,16 @@ const PCs: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        PCs Dashboard
-      </Typography>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: '-0.3px' }}>PCs Dashboard</Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>Track all PC assets across labs</Typography>
+      </Box>
 
       {/* Filters */}
-      <Card sx={{ mb: 2 }}>
+      <Card
+        className="panel"
+        sx={{ mb: 4, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' }}
+      >
         <CardContent>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
             <TextField
@@ -272,7 +294,10 @@ const PCs: React.FC = () => {
       ) : (
         <>
           {/* Bar Chart by Lab */}
-          <Card sx={{ mb: 2 }}>
+          <Card
+            className="panel"
+            sx={{ mb: 4, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' }}
+          >
             <CardContent>
               <Typography variant="h6" gutterBottom>PCs by Lab</Typography>
               {labIds.length === 0 ? (
@@ -308,32 +333,67 @@ const PCs: React.FC = () => {
           </Card>
 
           {/* Table */}
-          <Card>
-            <CardContent>
-              <Box component="table" sx={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                <Box component="thead" sx={{ backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.100' : 'grey.200' }}>
-                  <Box component="tr">
-                    <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Lab</Box>
-                    <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Name</Box>
-                    <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Brand</Box>
-                    <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Serial</Box>
-                    <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status</Box>
-                  </Box>
-                </Box>
-                <Box component="tbody">
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+                  <tr>
+                    <th className="px-6 py-4 whitespace-nowrap">Lab</th>
+                    <th className="px-6 py-4 whitespace-nowrap">PC Name (COMP ID)</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Brand</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Processor</th>
+                    <th className="px-6 py-4 whitespace-nowrap">RAM</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Storage</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Graphics Card</th>
+                    <th className="px-6 py-4 whitespace-nowrap">CPU</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Keyboard</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Mouse</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                    {isAdmin && <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-color)]">
                   {filtered.map((p) => (
-                    <Box key={p.id} component="tr" sx={{ '&:nth-of-type(even)': { backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.50' : 'grey.100' } }}>
-                      <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>Lab {p.lab}</Box>
-                      <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{p.name}</Box>
-                      <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{p.brand || '-'}</Box>
-                      <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{p.serial_number || '-'}</Box>
-                      <Box component="td" sx={{ p: 1.5 }}>{getStatusChip(p.status)}</Box>
-                    </Box>
+                    <tr 
+                      key={p.id} 
+                      className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
+                    >
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">Lab {p.lab}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-primary)] font-medium">{p.device_name || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{p.brand || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{p.processor || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{p.ram || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{p.storage || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{p.gpu ? 'Yes' : 'No'}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{p.cpu?.model || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{getPeripheral(p, 'keyboard')}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{getPeripheral(p, 'mouse')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusChip(p.status)}</td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                          <Tooltip title="Edit PC">
+                            <button
+                              onClick={() => openEdit(p)}
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <Edit fontSize="small" />
+                            </button>
+                          </Tooltip>
+                        </td>
+                      )}
+                    </tr>
                   ))}
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={isAdmin ? 13 : 12} className="px-6 py-8 text-center text-sm text-[var(--text-secondary)]">
+                        No PCs found matching your criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
 
@@ -346,9 +406,9 @@ const PCs: React.FC = () => {
               <Stack spacing={2} sx={{ pt: 1 }}>
                 <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
                   <TextField 
-                    label="PC Name" 
-                    value={formData.name} 
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                    label="PC Name (COMP ID)" 
+                    value={formData.device_name} 
+                    onChange={(e) => setFormData({ ...formData, device_name: e.target.value })} 
                     required 
                     fullWidth 
                   />
@@ -386,32 +446,32 @@ const PCs: React.FC = () => {
                   <TextField
                     select
                     label="Connected"
-                    value={formData.connected}
-                    onChange={(e) => setFormData({ ...formData, connected: e.target.value as any })}
+                    value={String(formData.connected)}
+                    onChange={(e) => setFormData({ ...formData, connected: e.target.value === 'true' })}
                     fullWidth
                   >
-                    <MenuItem value={true}>Connected</MenuItem>
-                    <MenuItem value={false}>Disconnected</MenuItem>
+                    <MenuItem value="true">Connected</MenuItem>
+                    <MenuItem value="false">Disconnected</MenuItem>
                   </TextField>
                   <TextField
                     select
                     label="GPU"
-                    value={formData.gpu}
-                    onChange={(e) => setFormData({ ...formData, gpu: e.target.value as any })}
+                    value={String(formData.gpu)}
+                    onChange={(e) => setFormData({ ...formData, gpu: e.target.value === 'true' })}
                     fullWidth
                   >
-                    <MenuItem value={true}>Has GPU</MenuItem>
-                    <MenuItem value={false}>No GPU</MenuItem>
+                    <MenuItem value="true">Has GPU</MenuItem>
+                    <MenuItem value="false">No GPU</MenuItem>
                   </TextField>
                   <TextField
                     select
                     label="Peripherals"
-                    value={formData.peripherals}
-                    onChange={(e) => setFormData({ ...formData, peripherals: e.target.value as any })}
+                    value={String(formData.peripherals)}
+                    onChange={(e) => setFormData({ ...formData, peripherals: e.target.value === 'true' })}
                     fullWidth
                   >
-                    <MenuItem value={true}>Has Peripherals</MenuItem>
-                    <MenuItem value={false}>No Peripherals</MenuItem>
+                    <MenuItem value="true">Has Peripherals</MenuItem>
+                    <MenuItem value="false">No Peripherals</MenuItem>
                   </TextField>
                 </Stack>
               </Stack>

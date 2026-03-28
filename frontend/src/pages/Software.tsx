@@ -156,7 +156,7 @@ const Software: React.FC = () => {
         setItems((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
         setSuccess('Software updated');
       } else {
-        const created = await softwareAPI.create(payload);
+        const created = await softwareAPI.create(formData.pc as number, payload);
         setItems((prev) => [created, ...prev]);
         setSuccess('Software created');
       }
@@ -243,61 +243,92 @@ const Software: React.FC = () => {
       </Card>
 
       {/* Table */}
-      <Card>
-        <CardContent>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-              <CircularProgress />
-            </Box>
-          ) : filtered.length === 0 ? (
-            <Box sx={{ textAlign: 'center', color: 'text.secondary', py: 6 }}>
-              <Typography>No software found. Try changing filters or add new software.</Typography>
-            </Box>
-          ) : (
-            <Box component="table" sx={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-              <Box component="thead" sx={{ backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.100' : 'grey.200' }}>
-                <Box component="tr">
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Lab</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>PC</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Name</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Version</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>License</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Expiry</Box>
-                  <Box component="th" sx={{ textAlign: 'right', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Actions</Box>
-                </Box>
-              </Box>
-              <Box component="tbody">
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+          <CircularProgress />
+        </Box>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm p-8 text-center text-[var(--text-secondary)]">
+          <Typography variant="h6" sx={{ mb: 1, color: 'var(--text-primary)' }}>
+            No software found
+          </Typography>
+          <Typography>
+            Try changing filters or add new software.
+          </Typography>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+                <tr>
+                  <th className="px-6 py-4 whitespace-nowrap">Lab / PC</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Name</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Version</th>
+                  <th className="px-6 py-4 whitespace-nowrap">License</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Expiry</th>
+                  {isAdmin && <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-color)]">
                 {filtered.map((row) => (
-                  <Box key={row.id} component="tr" sx={{ '&:nth-of-type(even)': { backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.50' : 'grey.100' } }}>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{labs.find((l) => l.id === pcToLab(row.pc))?.name || pcToLab(row.pc) || '-'}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{pcs.find((p) => p.id === row.pc)?.name || row.pc}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{row.name}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{row.version || '-'}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{row.license_key || '-'}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{row.expiry_date ? row.expiry_date.slice(0,10) : '-'}</Box>
-                    <Box component="td" sx={{ p: 1.5, textAlign: 'right' }}>
-                      {isAdmin && (
-                        <>
+                  <tr 
+                    key={row.id} 
+                    className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
+                  >
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">
+                      <div className="font-medium text-[var(--text-primary)]">
+                        {pcs.find((p) => p.id === row.pc)?.name || row.pc}
+                      </div>
+                      <div className="text-xs mt-0.5">
+                        {labs.find((l) => l.id === pcToLab(row.pc))?.name || pcToLab(row.pc) || 'Unknown Lab'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-primary)] font-medium">
+                      {row.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
+                      {row.version || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
+                      {row.license_key ? (
+                        <span className="font-mono text-xs bg-[var(--bg-main)] px-2 py-1 rounded">
+                          {row.license_key}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
+                      {row.expiry_date ? row.expiry_date.slice(0,10) : '-'}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
                           <Tooltip title="Edit">
-                            <IconButton color="info" onClick={() => openEdit(row)}>
-                              <Edit />
-                            </IconButton>
+                            <button
+                              onClick={() => openEdit(row)}
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <Edit fontSize="small" />
+                            </button>
                           </Tooltip>
                           <Tooltip title="Delete">
-                            <IconButton color="error" onClick={() => confirmDelete(row.id)}>
-                              <Delete />
-                            </IconButton>
+                            <button
+                              onClick={() => confirmDelete(row.id)}
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <Delete fontSize="small" />
+                            </button>
                           </Tooltip>
-                        </>
-                      )}
-                    </Box>
-                  </Box>
+                        </Stack>
+                      </td>
+                    )}
+                  </tr>
                 ))}
-              </Box>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       {isAdmin && (

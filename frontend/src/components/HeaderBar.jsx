@@ -1,176 +1,145 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { User, Bell, CheckSquare } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { User, Bell, CheckSquare, LayoutDashboard, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import logo from '../assets/logo.png';
 
 const HeaderBar = () => {
-  const { isAuthenticated, user } = useAuth();
-  const [unreadNotifications, setUnreadNotifications] = useState(3); // Mock unread count
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [unreadNotifications, setUnreadNotifications] = useState(3);
 
-  const handleMusterClick = () => {
-    // Handle muster functionality
-    console.log('Muster clicked');
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
+  const handleMusterClick = () => console.log('Muster clicked');
   const handleNotificationsClick = () => {
-    // Handle notifications functionality
     console.log('Notifications clicked');
-    setUnreadNotifications(0); // Clear notifications on click
+    setUnreadNotifications(0);
   };
+
+  /* Shared nav-link class factory */
+  const navLinkCls = ({ isActive }) =>
+    `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150
+     ${isActive
+       ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+     }`;
+
+  const iconBtnCls = `relative flex items-center justify-center w-9 h-9 rounded-lg text-sm text-gray-500 dark:text-gray-400
+    hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200
+    transition-all duration-150`;
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-black/20 backdrop-blur-lg border-b border-white/10 shadow-lg shadow-black/20">
-      <div className="mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Left Section - Logo and Institute Title */}
-        <div className="flex items-center gap-3 min-w-0">
-          <img src={logo} alt="YBIT" className="h-9 w-9 rounded-sm object-contain" />
-          <h1 className="text-sm sm:text-base md:text-lg font-semibold text-white truncate">
-            Yashwantrao Bhonsale Institute Of Technology
-          </h1>
+    <header className="
+      fixed top-0 left-0 right-0 z-50 h-16
+      bg-white dark:bg-gray-900
+      border-b border-gray-100 dark:border-gray-800
+      shadow-[0_1px_3px_rgba(0,0,0,0.06)]
+      font-sans
+    ">
+      <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-4">
+
+        {/* ── Left: Logo + Title ── */}
+        <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
+          <img
+            src={logo}
+            alt="YBIT"
+            className="h-8 w-8 rounded-lg object-contain"
+          />
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold text-gray-800 dark:text-gray-100 leading-tight truncate max-w-[260px]">
+              Yashwantrao Bhonsale Institute of Technology
+            </p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium tracking-wide uppercase">
+              Lab Management System
+            </p>
+          </div>
         </div>
 
-        {/* Right nav: Dashboard + Muster + Notifications + Account/Login (large screens) */}
-        <nav className="hidden lg:block">
-          <ul className="flex items-center gap-4 text-sm">
-            {/* Dashboard Button - Glass Style */}
-            <li>
-              <NavLink
-                to="/"
-                className={({ isActive }) =>
-                  `px-4 py-2 rounded-xl transition-all duration-200 font-medium ${
-                    isActive 
-                      ? 'bg-white/20 text-white shadow-lg shadow-white/10 border border-white/20' 
-                      : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
-                  }`
-                }
-              >
-                Dashboard
-              </NavLink>
-            </li>
-            
-            {/* Muster Button - Primary Gradient Style */}
-            <li>
-              <button
-                onClick={handleMusterClick}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl transition-all duration-200 font-medium shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-[1.02] active:scale-[0.98] border border-white/20"
-              >
-                <CheckSquare size={16} />
-                <span className="hidden sm:inline">Muster</span>
-              </button>
-            </li>
+        {/* ── Right: Nav actions ── */}
+        <div className="flex items-center gap-1">
 
-            {/* Notifications Button - Circular Glass Style */}
-            <li>
-              <button
-                onClick={handleNotificationsClick}
-                className="relative w-10 h-10 flex items-center justify-center text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 group border border-white/10 hover:border-white/20"
-                title="Notifications"
-              >
-                <Bell size={18} className="group-hover:scale-110 transition-transform duration-200" />
-                {unreadNotifications > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium animate-pulse shadow-lg border border-white/20">
-                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                  </span>
-                )}
-              </button>
-            </li>
+          {/* Dashboard link — desktop only */}
+          <div className="hidden md:flex items-center">
+            <NavLink to="/" className={navLinkCls}>
+              <LayoutDashboard size={15} />
+              Dashboard
+            </NavLink>
+          </div>
 
-            {/* User Profile - Glass Style with Avatar */}
-            {isAuthenticated ? (
-              <li>
-                <NavLink
-                  to="/account"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 font-medium ${
-                      isActive 
-                        ? 'bg-white/20 text-white shadow-lg shadow-white/10 border border-white/20' 
-                        : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
-                    }`
-                  }
-                  title={user?.username || 'Account'}
-                >
-                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <User size={14} className="text-white" />
-                  </div>
-                  <span className="hidden sm:inline">{user?.username || 'Account'}</span>
-                </NavLink>
-              </li>
-            ) : (
-              <li>
-                <NavLink
-                  to="/login"
-                  className={({ isActive }) =>
-                    `px-4 py-2 rounded-xl transition-all duration-200 font-medium ${
-                      isActive 
-                        ? 'bg-white/20 text-white shadow-lg shadow-white/10 border border-white/20' 
-                        : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
-                    }`
-                }
-                >
-                  Login
-                </NavLink>
-              </li>
-            )}
-          </ul>
-        </nav>
+          {/* Muster — desktop only */}
+          <div className="hidden md:flex items-center">
+            <button
+              onClick={handleMusterClick}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150
+                text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200`}
+            >
+              <CheckSquare size={15} />
+              Muster
+            </button>
+          </div>
 
-        {/* Mobile Navigation - Show on smaller screens */}
-        <nav className="lg:hidden flex items-center gap-3">
-          {/* Mobile Muster Button */}
-          <button
-            onClick={handleMusterClick}
-            className="p-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl transition-all duration-200 shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-[1.02] active:scale-[0.98] border border-white/20"
-            title="Muster"
-          >
-            <CheckSquare size={16} />
-          </button>
+          {/* Divider */}
+          <div className="hidden md:block w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
 
-          {/* Mobile Notifications Button */}
+          {/* Notifications */}
           <button
             onClick={handleNotificationsClick}
-            className="relative w-9 h-9 flex items-center justify-center text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 group border border-white/10 hover:border-white/20"
+            className={iconBtnCls}
             title="Notifications"
           >
-            <Bell size={16} className="group-hover:scale-110 transition-transform duration-200" />
+            <Bell size={17} />
             {unreadNotifications > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium animate-pulse shadow-lg border border-white/20">
+              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold leading-none">
                 {unreadNotifications > 9 ? '9+' : unreadNotifications}
               </span>
             )}
           </button>
 
-          {/* Mobile Account/Login */}
+          {/* Profile / Login */}
           {isAuthenticated ? (
-            <NavLink
-              to="/account"
-              className={({ isActive }) =>
-                `p-2 rounded-xl transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-white/20 text-white shadow-lg shadow-white/10 border border-white/20' 
-                    : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
-                }`
-              }
-              title={user?.username || 'Account'}
-            >
-              <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <User size={12} className="text-white" />
-              </div>
-            </NavLink>
+            <div className="flex items-center gap-1">
+              <NavLink
+                to="/account"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg transition-all duration-150 border
+                   ${isActive
+                     ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800'
+                     : 'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                   }`
+                }
+                title={user?.username || 'Account'}
+              >
+                {/* Avatar: initials circle */}
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                  {user?.username?.charAt(0)?.toUpperCase() ?? <User size={13} />}
+                </div>
+                <span className="hidden sm:inline text-sm text-gray-700 dark:text-gray-300 font-medium max-w-[100px] truncate">
+                  {user?.username || 'Account'}
+                </span>
+              </NavLink>
+              <button
+                onClick={handleLogout}
+                className={iconBtnCls}
+                title="Logout"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           ) : (
             <NavLink
               to="/login"
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-xl transition-all duration-200 font-medium ${
-                  isActive 
-                    ? 'bg-white/20 text-white shadow-lg shadow-white/10 border border-white/20' 
-                    : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
-                }`
-              }
+              className="px-4 py-1.5 text-sm font-semibold rounded-lg
+                bg-blue-600 hover:bg-blue-700 text-white
+                transition-all duration-150 shadow-sm"
             >
               Login
             </NavLink>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

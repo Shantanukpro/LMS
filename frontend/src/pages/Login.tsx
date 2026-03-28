@@ -50,57 +50,60 @@ const Login: React.FC = () => {
   `;
 
   return (
-    <Box sx={{ minHeight: '100svh', background: 'linear-gradient(135deg, #eef2f3 0%, #d9e4f5 100%)' }}>
+    <Box sx={{ minHeight: '100svh', backgroundColor: 'var(--bg-main)' }}>
       <Box sx={{
         minHeight: '100svh',
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', md: '5fr 7fr' },
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', p: 3, zIndex: 10 }}>
           <Container maxWidth="xs">
             <Paper
-              elevation={10}
+              elevation={0}
               sx={{
-                p: 2.5,
-                borderRadius: 2,
-                background: 'rgba(255, 255, 255, 0.98)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 10px 24px rgba(0,0,0,0.08)',
+                p: { xs: 3, sm: 4 },
+                borderRadius: 4,
+                background: 'var(--card-bg)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid var(--border-color)',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
                 width: '100%',
-                maxWidth: 340,
+                maxWidth: 380,
                 mx: 'auto',
+                transition: 'all 0.4s ease',
               }}
             >
-          <Box sx={{ textAlign: 'center', mb: 2.5 }}>
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
             <Box
               component="img"
               src="/logo.png"
               alt="Institute Logo"
               onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-              sx={{ height: 48, mb: 1, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+              sx={{ height: 56, mb: 2, objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))', transition: 'transform 0.3s', '&:hover': { transform: 'scale(1.05)' } }}
             />
             <Typography
-              variant="h6"
+              variant="h5"
               component="h1"
               gutterBottom
               sx={{
                 fontWeight: 800,
-                color: '#0d47a1',
-                letterSpacing: 0.2,
+                color: 'var(--text-primary)',
+                letterSpacing: -0.5,
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
               }}
             >
               Yashwantrao Bhonsale Institute of Technology
             </Typography>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            <Typography variant="subtitle1" sx={{ color: '#14b8a6', fontWeight: 600 }} gutterBottom>
               Lab Management System
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Sign in to your account
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+              Sign in to your account to continue
             </Typography>
           </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2, backgroundColor: 'rgba(244, 63, 94, 0.1)', color: '#e11d48', '& .MuiAlert-icon': { color: '#e11d48' } }}>
               {error}
             </Alert>
           )}
@@ -110,22 +113,24 @@ const Login: React.FC = () => {
               fullWidth
               label="Username"
               variant="outlined"
-              margin="dense"
-              size="small"
+              margin="normal"
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="new-username"
               autoFocus
               sx={{
+                mb: 2,
                 '& .MuiOutlinedInput-root': {
-                  '& fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
-                  '&:hover fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused': {
-                    boxShadow: (theme) => `0 0 0 3px ${theme.palette.primary.main}22`,
-                  },
+                  borderRadius: 2,
+                  backgroundColor: 'var(--hover-bg)',
+                  color: 'var(--text-primary)',
+                  '& fieldset': { borderColor: 'var(--border-color)', transition: 'all 0.2s' },
+                  '&:hover fieldset': { borderColor: '#14b8a6' },
+                  '&.Mui-focused fieldset': { borderColor: '#14b8a6', borderWidth: '2px' },
                 },
+                '& .MuiInputLabel-root': { color: 'var(--text-secondary)' },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#14b8a6' },
               }}
             />
             <TextField
@@ -133,21 +138,23 @@ const Login: React.FC = () => {
               label="Password"
               type="password"
               variant="outlined"
-              margin="dense"
-              size="small"
+              margin="normal"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
               sx={{
+                mb: 3,
                 '& .MuiOutlinedInput-root': {
-                  '& fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
-                  '&:hover fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused': {
-                    boxShadow: (theme) => `0 0 0 3px ${theme.palette.primary.main}22`,
-                  },
+                  borderRadius: 2,
+                  backgroundColor: 'var(--hover-bg)',
+                  color: 'var(--text-primary)',
+                  '& fieldset': { borderColor: 'var(--border-color)', transition: 'all 0.2s' },
+                  '&:hover fieldset': { borderColor: '#14b8a6' },
+                  '&.Mui-focused fieldset': { borderColor: '#14b8a6', borderWidth: '2px' },
                 },
+                '& .MuiInputLabel-root': { color: 'var(--text-secondary)' },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#14b8a6' },
               }}
             />
             <Button
@@ -157,31 +164,50 @@ const Login: React.FC = () => {
               size="large"
               disabled={loading}
               sx={{
-                mt: 2.5,
-                mb: 1.5,
-                py: 1.2,
-                backgroundColor: 'primary.main',
-                '&:hover': { backgroundColor: 'primary.dark' },
+                py: 1.5,
+                mb: 2,
+                borderRadius: 2,
+                background: 'linear-gradient(to right, #14b8a6, #10b981)',
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '1rem',
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                boxShadow: '0 8px 20px -6px rgba(20, 184, 166, 0.5)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  background: 'linear-gradient(to right, #0d9488, #059669)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 12px 24px -8px rgba(20, 184, 166, 0.6)',
+                },
+                '&:disabled': {
+                  background: 'var(--border-color)',
+                  color: 'var(--text-secondary)',
+                }
               }}
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
-            <Box sx={{ textAlign: 'center', mt: 0.5 }}>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'center', mt: 1 }}>
               <Link
                 component="button"
                 variant="body2"
                 onClick={() => navigate('/register')}
-                sx={{ textDecoration: 'none', color: 'primary.main', opacity: 0.9, '&:hover': { textDecoration: 'underline', opacity: 1 } }}
+                sx={{ 
+                  color: '#14b8a6', 
+                  textDecoration: 'none', 
+                  fontWeight: 600,
+                  transition: 'opacity 0.2s',
+                  '&:hover': { opacity: 0.8 } 
+                }}
               >
                 Don't have an account? Sign Up
               </Link>
-            </Box>
-            <Box sx={{ textAlign: 'center', mt: 0.5 }}>
               <Link
                 component="button"
-                variant="body2"
+                variant="caption"
                 onClick={() => { devSignIn(); navigate('/'); }}
-                sx={{ color: 'text.secondary' }}
+                sx={{ color: 'var(--text-secondary)', transition: 'color 0.2s', '&:hover': { color: 'var(--text-primary)' } }}
               >
                 Dev Sign-in
               </Link>
@@ -190,51 +216,70 @@ const Login: React.FC = () => {
             </Paper>
           </Container>
         </Box>
+        
         <Box sx={{ display: { xs: 'none', md: 'block' }, position: 'relative', overflow: 'hidden' }}>
-          {/* Animated gradient backdrop with reduced opacity */}
+          {/* Animated gradient backdrop mapped to app aesthetics */}
           <Box
             sx={{
               position: 'absolute',
               inset: 0,
-              // Soft Gray animated gradient
-              background: (theme) => theme.palette.mode === 'light'
-                ? 'linear-gradient(120deg, #f1f5f9, #e5e7eb, #f3f4f6)'
-                : 'linear-gradient(120deg, #0f172a, #111827, #1f2937)',
-              opacity: 0.6,
-              backgroundSize: '200% 200%',
-              animation: `${gradientShift} 14s ease infinite`,
+              background: 'linear-gradient(-45deg, #0d9488, #14b8a6, #0284c7, #3b82f6)',
+              backgroundSize: '400% 400%',
+              animation: `${gradientShift} 15s ease infinite`,
+              opacity: 0.9,
             }}
           />
+          {/* Dark mode overlay */}
+          <Box sx={{
+            position: 'absolute', inset: 0, 
+            background: 'var(--bg-main)', 
+            opacity: 0.1,
+            mixBlendMode: 'multiply'
+          }} />
+          
           {/* Optional watermark logo */}
           <Box
             component="img"
             src="/logo.png"
             alt="Institute Watermark"
             onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-            sx={{ position: 'absolute', right: 24, top: 24, height: 44, opacity: 0.85 }}
+            sx={{ position: 'absolute', right: 32, top: 32, height: 56, opacity: 0.9, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}
           />
-          {/* Decorative blurred circles */}
-          <Box sx={{ position: 'absolute', width: 260, height: 260, borderRadius: '50%', background: '#42a5f533', filter: 'blur(40px)', top: 80, left: 80 }} />
-          <Box sx={{ position: 'absolute', width: 320, height: 320, borderRadius: '50%', background: '#1976d229', filter: 'blur(50px)', bottom: 120, right: 120 }} />
-          <Box sx={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', background: '#00bcd433', filter: 'blur(40px)', bottom: 40, left: 200 }} />
+          
+          {/* Decorative glass elements */}
+          <Box sx={{ position: 'absolute', width: '40vw', height: '40vw', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', filter: 'blur(60px)', top: '-10%', left: '-10%' }} />
+          <Box sx={{ position: 'absolute', width: '30vw', height: '30vw', borderRadius: '50%', background: 'rgba(0,0,0,0.2)', filter: 'blur(60px)', bottom: '-5%', right: '-5%' }} />
+          
           {/* Headline and bullets */}
-          <Box sx={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 6 }}>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: '#0d47a1', mb: 1 }}>Welcome to YBIT Labs</Typography>
-            <Typography variant="h6" sx={{ color: 'text.secondary', mb: 3 }}>Efficiently manage labs, assets, and maintenance</Typography>
-            <Box sx={{ display: 'grid', gap: 1.2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CheckCircleOutline color="primary" fontSize="small" />
-                <Typography color="text.secondary">Track equipment across labs</Typography>
+          <Box sx={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 8, zIndex: 10 }}>
+            <Paper elevation={0} sx={{ 
+              p: 5, borderRadius: 4, 
+              background: 'rgba(255, 255, 255, 0.1)', 
+              backdropFilter: 'blur(16px)', 
+              border: '1px solid rgba(255,255,255,0.2)',
+              maxWidth: 500
+            }}>
+              <Typography variant="h3" sx={{ fontWeight: 800, color: '#ffffff', mb: 2, fontFamily: '"Plus Jakarta Sans", sans-serif', textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+                Welcome to YBIT Labs
+              </Typography>
+              <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.9)', mb: 4, fontWeight: 500, lineHeight: 1.4 }}>
+                A premium operating portal to efficiently manage institutional labs, assets, and maintenance schedules.
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.1)', p: 1.5, borderRadius: 2 }}>
+                  <CheckCircleOutline sx={{ color: '#6ee7b7' }} />
+                  <Typography sx={{ color: '#fff', fontWeight: 600 }}>Track equipment seamlessly</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.1)', p: 1.5, borderRadius: 2 }}>
+                  <CheckCircleOutline sx={{ color: '#6ee7b7' }} />
+                  <Typography sx={{ color: '#fff', fontWeight: 600 }}>Log & resolve maintenance quickly</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.1)', p: 1.5, borderRadius: 2 }}>
+                  <CheckCircleOutline sx={{ color: '#6ee7b7' }} />
+                  <Typography sx={{ color: '#fff', fontWeight: 600 }}>Actionable insights via dashboard</Typography>
+                </Box>
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CheckCircleOutline color="primary" fontSize="small" />
-                <Typography color="text.secondary">Log and resolve maintenance quickly</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CheckCircleOutline color="primary" fontSize="small" />
-                <Typography color="text.secondary">Gain insights with a clean dashboard</Typography>
-              </Box>
-            </Box>
+            </Paper>
           </Box>
         </Box>
       </Box>

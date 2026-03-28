@@ -2,47 +2,42 @@ import React from 'react';
 import Sidebar from './Sidebar.jsx';
 import HeaderBar from './HeaderBar.jsx';
 import { useColorMode } from '../contexts/ThemeContext';
+import bgImage from '../assets/tech_lab_bg.png';
 
 const AppLayout = ({ children }) => {
   const { mode } = useColorMode();
 
-  // Sync Tailwind's dark mode class with ThemeContext
   React.useEffect(() => {
     const root = document.documentElement;
     if (mode === 'dark') {
       root.classList.add('dark');
-      // Apply dark theme variables
-      root.style.setProperty('--bg-main', '#0F172A');
-      root.style.setProperty('--card-bg', '#1E293B');
-      root.style.setProperty('--text-primary', '#F1F5F9');
-      root.style.setProperty('--text-secondary', '#94A3B8');
-      root.style.setProperty('--border-color', '#334155');
-      root.style.setProperty('--hover-bg', '#1E293B');
-      root.style.setProperty('--accent-bg', '#1E293B');
     } else {
       root.classList.remove('dark');
-      // Apply light theme variables
-      root.style.setProperty('--bg-main', '#F5F7FB');
-      root.style.setProperty('--card-bg', '#FFFFFF');
-      root.style.setProperty('--text-primary', '#1F2937');
-      root.style.setProperty('--text-secondary', '#6B7280');
-      root.style.setProperty('--border-color', '#E5E7EB');
-      root.style.setProperty('--hover-bg', '#F9FAFB');
-      root.style.setProperty('--accent-bg', '#F3F4F6');
     }
   }, [mode]);
 
   return (
-    <div className={`min-h-screen transition-colors duration-300`} style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-primary)' }}>
-      {/* Fixed header with logo + college name + top nav */}
+    <div className="relative min-h-screen bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+      {/* ── Global Animated Tech Background ── */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div 
+          className="absolute inset-[-15%] opacity-15 dark:opacity-20"
+          style={{
+            backgroundImage: `url(${bgImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            animation: 'panBackground 40s ease-in-out infinite alternate',
+          }}
+        />
+        {/* Soft edge gradient to blend into main background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#f8fafc]/30 to-[#f8fafc] dark:via-[#030712]/30 dark:to-[#030712] pointer-events-none" />
+      </div>
+
       <HeaderBar />
-
-      {/* Sidebar under the header */}
       <Sidebar />
-
-      {/* Main content on the right, shifts when sidebar expands */}
-      <main className="transition-all duration-300 ease-out ml-16 peer-hover:ml-64 pt-16">
-        <div className="p-4 sm:p-6 md:p-8">
+      {/* Main content area — offset for fixed sidebar (w-16) and fixed header (h-16) */}
+      <main className="relative z-10 transition-all duration-300 ease-out ml-16 peer-hover:ml-60 pt-16">
+        <div className="p-6 sm:p-8 max-w-[1600px]">
           {children}
         </div>
       </main>
