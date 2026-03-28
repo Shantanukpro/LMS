@@ -4,9 +4,15 @@ import type {
   ProjectorDetails, ElectricalApplianceDetails, CPU, OS, Peripheral, Software, 
   MaintenanceLog, ImportResult, BulkImportRequest, MaintenanceNotification,
   LoginRequest, RegisterRequest, AuthResponse 
+  User, Lab, PC, Equipment, Software, MaintenanceLog, Inventory,
+  LoginRequest, RegisterRequest, AuthResponse,
+  MusterSession, MusterSessionCreate, MusterEntryhttps://github.com/Shantanukpro/LMS/pull/4/conflict?name=frontend%252Fsrc%252Ftypes%252Findex.ts&ancestor_oid=642a463e7b010689f94db3462a4c92ebc9926861&base_oid=a6f652ca116da541b04fd11c24d5fbe2067dfeb3&head_oid=a31934ebd0a5fa4e027f03975738bc19bd6c5107
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
+// We'll define the Muster types in types.ts later, but for now use any or extend types.
+// For simplicity, we'll use any and update types.ts separately if needed.
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 // Helper to extract results from DRF paginated responses
 const extractResults = <T>(data: any): T[] => {
@@ -168,10 +174,22 @@ export const labEquipmentAPI = {
   },
 
   update: async (id: number, data: Partial<LabEquipment>): Promise<LabEquipment> => {
+  
+  getByLab: async (labId: number): Promise<any[]> => {
+    const all = await labEquipmentAPI.getAll();
+    return all.filter((e) => e.lab === labId);
+  },
+  
+  create: async (data: any): Promise<any> => {
+    const response = await api.post('/lab-equipment/', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: any): Promise<any> => {
     const response = await api.patch(`/lab-equipment/${id}/`, data);
     return response.data;
   },
-
+  
   delete: async (id: number): Promise<void> => {
     await api.delete(`/lab-equipment/${id}/`);
   },
@@ -272,6 +290,24 @@ export const pcsAPI = {
 
   deletePeripheral: async (id: number): Promise<void> => {
     await api.delete(`/peripherals/${id}/`);
+  
+  getById: async (id: number): Promise<Equipment> => {
+    const response = await api.get(`/equipment/${id}/`);
+    return response.data;
+  },
+  
+  create: async (data: Omit<Equipment, 'id' | 'added_on' | 'updated_at'>): Promise<Equipment> => {
+    const response = await api.post('/equipment/', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: Partial<Equipment>): Promise<Equipment> => {
+    const response = await api.patch(`/equipment/${id}/`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/equipment/${id}/`);
   },
 };
 
@@ -390,6 +426,98 @@ export const importAPI = {
 export const notificationAPI = {
   sendMaintenanceNotification: async (data: MaintenanceNotification): Promise<boolean> => {
     const response = await api.post('/notifications/maintenance/', data);
+    return response.data;
+  },
+};
+
+// Muster API
+export const musterAPI = {
+  // Create a new muster session
+  createSession: async (data: { 
+    date: string; 
+    time: string; 
+    lab: number; 
+    class_name: string; 
+    batch: string 
+  }): Promise<{ id: number }> => {
+    const response = await api.post('/muster/api/sessions/', data);
+    return response.data;
+  },
+  
+  // Get all muster sessions (for listing)
+  listSessions: async (): Promise<Array<{
+    id: number;
+    date: string;
+    time: string;
+    lab: number;
+    lab_name: string;
+    class_name: string;
+    batch: string;
+    created_at: string;
+    entry_count: number;
+  }>> => {
+    const response = await api.get('/muster/api/sessions/list/');
+    return response.data;
+  },
+  
+  // Get a single muster session with entries
+  getSession: async (sessionId: number): Promise<{
+    id: number;
+    date: string;
+    time: string;
+    lab: number;
+    lab_name: string;
+    class_name: string;
+    batch: string;
+    created_at: string;
+    entries: Array<{
+      id: number;
+      sr_no: number;
+      roll_no: string;
+      pc: number;
+      pc_name: string;
+    }>;
+  }> => {
+    const response = await api.get(`/muster/api/sessions/${sessionId}/`);
+    return response.data;
+  },
+  
+  // Update a muster session (including entries)
+  updateSession: async (sessionId: number, data: { 
+    date: string; 
+    time: string; 
+    lab: number; 
+    class_name: string; 
+    batch: string;
+    entries: Array<{
+      sr_no: number;
+      roll_no: string;
+      pc: number;
+    }>
+  }): Promise<{ status: string }> => {
+    const response = await api.put(`/muster/api/sessions/${sessionId}/update/`, data);
+    return response.data;
+  },
+  
+  // Delete a muster session
+  deleteSession: async (sessionId: number): Promise<{ status: string }> => {
+    const response = await api.delete(`/muster/api/sessions/${sessionId}/delete/`);
+    return response.data;
+  },
+  
+  // Save entries for a session (alternative to updateSession)
+  saveEntries: async (sessionId: number, entries: Array<{
+    sr_no: number;
+    roll_no: string;
+    pc: number;
+  }>): Promise<{ status: string }> => {
+    const response = await api.post(`/muster/api/sessions/${sessionId}/entries/`, { entries });
+    return response.data;
+  },
+  
+  // Get PCs for a lab (for dropdowns)
+  getPCsForLab: async (labId: number): Promise<Array<{ id: number; device_name: string }>> => {
+    const response = await api.get(`/muster/api/pcs/${labId}/`);
     return response.data;
   },
 };

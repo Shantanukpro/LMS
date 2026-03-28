@@ -10,7 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +26,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zhg$p@*ef$u#v0l(umt(2zhf%-501((p(@qz9s0#mj_9icsc5j'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-zhg$p@*ef$u#v0l(umt(2zhf%-501((p(@qz9s0#mj_9icsc5j)')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '172.19.96.1', 'testserver']
 
@@ -43,6 +49,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'users',
     'tickets',
+    'notifications',
+    'muster',
 ]
 
 # -----------------------------
@@ -217,3 +225,14 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')
 
 DEFAULT_FROM_EMAIL = 'LMS Notifications <noreply@lms-system.com>'
+
+# ---------------------------------------------------------
+# SMS CONFIGURATION (Twilio)
+# ---------------------------------------------------------
+# Set to 'console' for development (prints to terminal) or 'twilio' for production
+SMS_BACKEND = config('SMS_BACKEND', default='console')
+
+# Twilio credentials — set these in your .env file for production
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='+1000000000')  # Your Twilio phone number
