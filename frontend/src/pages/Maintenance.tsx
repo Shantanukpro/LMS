@@ -20,9 +20,9 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
-// Using native date inputs to avoid extra dependencies
-import { maintenanceAPI, labsAPI, equipmentAPI } from '../services/api';
-import type { MaintenanceLog, Lab, Equipment } from '../types';
+import { RefreshCw } from 'lucide-react';
+import { maintenanceAPI, labsAPI, labEquipmentAPI, pcsAPI } from '../services/api';
+import type { MaintenanceLog, Lab, LabEquipment, PC } from '../types';
 
 const STATUS = ['pending', 'fixed'] as const;
 const EQUIPMENT_STATUS = ['working', 'not_working', 'under_repair'] as const;
@@ -30,7 +30,7 @@ const EQUIPMENT_STATUS = ['working', 'not_working', 'under_repair'] as const;
 // UI row shape (normalized)
 type MaintRow = {
   id: number;
-  equipment: number;
+  equipment: string;
   equipment_name?: string;
   lab: number | null;
   title: string;
@@ -43,7 +43,7 @@ type MaintRow = {
 };
 
 type MaintForm = {
-  equipment: number | '';
+  equipment: string;
   title: string;
   description: string;
   status: (typeof STATUS)[number];
@@ -58,7 +58,8 @@ const Maintenance: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const [items, setItems] = useState<MaintRow[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [equipment, setEquipment] = useState<LabEquipment[]>([]);
+  const [pcs, setPcs] = useState<PC[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -67,7 +68,7 @@ const Maintenance: React.FC = () => {
   // filters
   const [q, setQ] = useState('');
   const [fLab, setFLab] = useState<number | ''>('');
-  const [fEquipment, setFEquipment] = useState<number | ''>('');
+  const [fEquipment, setFEquipment] = useState<string>('');
   const [fStatus, setFStatus] = useState<(typeof STATUS)[number] | ''>('');
   const [from, setFrom] = useState<string>(''); // YYYY-MM-DD
   const [to, setTo] = useState<string>('');
@@ -95,10 +96,11 @@ const Maintenance: React.FC = () => {
       setLoading(true);
       setError('');
 
-      const [logs, labsData, equipmentData] = await Promise.all([
+      const [logs, labsData, equipmentData, pcsData] = await Promise.all([
         maintenanceAPI.getAll(),
         labsAPI.getAll(),
-        equipmentAPI.getAll(),
+        labEquipmentAPI.getAll(),
+        pcsAPI.getAll(),
       ]);
 
       // Extract results from paginated responses (or plain arrays)
@@ -106,15 +108,31 @@ const Maintenance: React.FC = () => {
       const logsArray = toArray(logs);
       const labsArray = toArray(labsData);
       const equipmentArray = toArray(equipmentData);
+      const pcsArray = toArray(pcsData);
 
       // Map backend MaintenanceLog to UI MaintRow
       const mapped: MaintRow[] = logsArray.map((m: MaintenanceLog) => {
-        const equip = equipmentArray.find((e: any) => e.id === m.equipment);
+        let equipment_name = 'Unknown';
+        let equipment_val = '';
+        let lab = (m as any).lab ?? null;
+
+        if (m.pc) {
+          const pc = pcsArray.find((p: any) => p.id === m.pc);
+          equipment_val = `pc-${m.pc}`;
+          equipment_name = pc ? `PC: ${pc.device_name}` : `PC #${m.pc}`;
+          if (!lab && pc) lab = pc.lab;
+        } else if (m.lab_equipment) {
+          const equip = equipmentArray.find((e: any) => e.id === m.lab_equipment);
+          equipment_val = `eq-${m.lab_equipment}`;
+          equipment_name = equip ? `${equip.equipment_type} (${equip.brand || 'Unknown'})` : `Equipment #${m.lab_equipment}`;
+          if (!lab && equip) lab = equip.lab;
+        }
+
         return {
           id: m.id,
-          equipment: m.equipment,
-          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${m.equipment}`,
-          lab: (m as any).lab ?? equip?.lab ?? null,
+          equipment: equipment_val,
+          equipment_name,
+          lab,
           title: (m as any).issue_description || '',
           description: (m as any).remarks ?? '',
           status: m.status as 'pending' | 'fixed',
@@ -128,6 +146,7 @@ const Maintenance: React.FC = () => {
       setItems(mapped);
       setLabs(labsArray);
       setEquipment(equipmentArray);
+      setPcs(pcsArray);
     } catch (error: any) {
       console.error('Failed to load maintenance logs:', error);
       setError(error?.response?.data?.detail || 'Failed to load maintenance logs. Please check your connection and try again.');
@@ -192,11 +211,15 @@ const Maintenance: React.FC = () => {
       setError('Equipment and title are required');
       return;
     }
+    const isPc = formData.equipment.startsWith('pc-');
+    const eqIdStr = formData.equipment.split('-')[1];
+    const eqId = parseInt(eqIdStr || '0', 10);
     try {
       setSaving(true);
 
       const payload: any = {
-        equipment: formData.equipment,
+        pc: isPc ? eqId : undefined,
+        lab_equipment: !isPc ? eqId : undefined,
         issue_description: formData.title.trim(),
         remarks: formData.description || undefined,
         status_before: formData.status_before,
@@ -206,12 +229,22 @@ const Maintenance: React.FC = () => {
       };
       if (editingId) {
         const updated = await maintenanceAPI.update(editingId, payload);
-        const equip = equipment.find(e => e.id === updated.equipment);
+        const getMappedName = (isPcEdit: boolean, mId: number) => {
+          if (isPcEdit) {
+            const pc = pcs.find(p => p.id === mId);
+            return pc ? `PC: ${pc.device_name}` : `PC #${mId}`;
+          } else {
+            const eq = equipment.find(e => e.id === mId);
+            return eq ? `${eq.equipment_type} (${eq.brand || 'Unknown'})` : `Equipment #${mId}`;
+          }
+        };
+        const getLab = (isPcEdit: boolean, mId: number) => isPcEdit ? pcs.find(p => p.id === mId)?.lab : equipment.find(e => e.id === mId)?.lab;
+        
         const mapped: MaintRow = {
           id: updated.id,
-          equipment: updated.equipment,
-          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${updated.equipment}`,
-          lab: equip?.lab || null,
+          equipment: formData.equipment,
+          equipment_name: getMappedName(isPc, eqId),
+          lab: getLab(isPc, eqId) || null,
           title: updated.issue_description || formData.title,
           description: updated.remarks ?? formData.description,
           status: updated.status,
@@ -224,12 +257,22 @@ const Maintenance: React.FC = () => {
         setSuccess('Maintenance updated');
       } else {
         const created = await maintenanceAPI.create(payload);
-        const equip = equipment.find(e => e.id === created.equipment);
+        const getMappedName = (isPcEdit: boolean, mId: number) => {
+          if (isPcEdit) {
+            const pc = pcs.find(p => p.id === mId);
+            return pc ? `PC: ${pc.device_name}` : `PC #${mId}`;
+          } else {
+            const eq = equipment.find(e => e.id === mId);
+            return eq ? `${eq.equipment_type} (${eq.brand || 'Unknown'})` : `Equipment #${mId}`;
+          }
+        };
+        const getLab = (isPcEdit: boolean, mId: number) => isPcEdit ? pcs.find(p => p.id === mId)?.lab : equipment.find(e => e.id === mId)?.lab;
+        
         const mapped: MaintRow = {
           id: created.id,
-          equipment: created.equipment,
-          equipment_name: equip ? `${equip.equipment_type} - ${equip.brand || 'Unknown'}` : `Equipment #${created.equipment}`,
-          lab: equip?.lab || null,
+          equipment: formData.equipment,
+          equipment_name: getMappedName(isPc, eqId),
+          lab: getLab(isPc, eqId) || null,
           title: created.issue_description || formData.title,
           description: created.remarks ?? formData.description,
           status: created.status,
@@ -277,189 +320,383 @@ const Maintenance: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Maintenance Logs
-      </Typography>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Maintenance Logs</h1>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Track and manage equipment maintenance records</p>
+      </div>
 
       {/* Filters */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
-            <TextField
-              label="Search"
-              placeholder="Title or description..."
+      <div className="rounded-xl border p-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 items-end">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              InputProps={{ endAdornment: <Search fontSize="small" /> }}
-              sx={{ flex: 1 }}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border text-sm"
+              style={{ 
+                backgroundColor: 'var(--bg-main)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
             />
-            <TextField select label="Lab" value={fLab} onChange={(e) => setFLab(e.target.value === '' ? '' : Number(e.target.value))} sx={{ minWidth: 180 }}>
-              <MenuItem value="">All</MenuItem>
-              {labs.map((l) => (
-                <MenuItem key={l.id} value={l.id}>{l.name}</MenuItem>
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+          </div>
+          
+          <select
+            value={fLab}
+            onChange={(e) => setFLab(e.target.value === '' ? '' : Number(e.target.value))}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <option value="">All Labs</option>
+            {labs.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={fEquipment}
+            onChange={(e) => setFEquipment(e.target.value)}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <option value="">All Items</option>
+            <optgroup label="PCs">
+              {pcs.map((p) => (
+                <option key={`pc-${p.id}`} value={`pc-${p.id}`}>PC: {p.device_name}</option>
               ))}
-            </TextField>
-            <TextField select label="Equipment" value={fEquipment} onChange={(e) => setFEquipment(e.target.value === '' ? '' : Number(e.target.value))} sx={{ minWidth: 200 }}>
-              <MenuItem value="">All</MenuItem>
+            </optgroup>
+            <optgroup label="Lab Equipment">
               {equipment.map((e) => (
-                <MenuItem key={e.id} value={e.id}>{e.equipment_type} - {e.brand || 'Unknown'}</MenuItem>
+                <option key={`eq-${e.id}`} value={`eq-${e.id}`}>{e.equipment_type} - {e.brand || 'Unknown'}</option>
               ))}
-            </TextField>
-            <TextField select label="Status" value={fStatus} onChange={(e) => setFStatus(e.target.value as any)} sx={{ minWidth: 160 }}>
-              <MenuItem value="">All</MenuItem>
-              {STATUS.map((s) => (
-                <MenuItem key={s} value={s} style={{ textTransform: 'capitalize' }}>{s}</MenuItem>
-              ))}
-            </TextField>
-            <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-            <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-            <Tooltip title="Refresh">
-              <span>
-                <IconButton onClick={loadAll} disabled={loading}>
-                  {loading ? <CircularProgress size={22} /> : <Refresh />}
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
+            </optgroup>
+          </select>
+
+          <select
+            value={fStatus}
+            onChange={(e) => setFStatus(e.target.value as any)}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <option value="">All Status</option>
+            {STATUS.map((s) => (
+              <option key={s} value={s} style={{ textTransform: 'capitalize' }}>{s}</option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          />
+
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="px-3 py-2 rounded-lg border text-sm"
+            style={{ 
+              backgroundColor: 'var(--bg-main)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+          />
+
+          <div className="flex gap-2">
+            <button
+              onClick={loadAll}
+              disabled={loading}
+              className="p-2 rounded-lg border transition-colors"
+              style={{ 
+                backgroundColor: 'var(--hover-bg)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+              title="Refresh"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-500"></div>
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </button>
+            
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Add className="h-4 w-4" />
               {isAdmin ? 'Add Log' : 'Report Issue'}
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Table */}
-      <Card>
-        <CardContent>
+      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
+        <div className="overflow-x-auto">
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-              <CircularProgress />
-            </Box>
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--border-color)] border-t-[var(--primary-color)]"></div>
+            </div>
           ) : filtered.length === 0 ? (
-            <Box sx={{ textAlign: 'center', color: 'text.secondary', py: 6 }}>
-              <Typography>No maintenance logs found. Try changing filters or add a new log.</Typography>
-            </Box>
+            <div className="text-center py-12 text-[var(--text-secondary)]">
+              <p className="text-sm">
+                No maintenance logs found. Try changing filters or add a new log.
+              </p>
+            </div>
           ) : (
-            <Box component="table" sx={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-              <Box component="thead" sx={{ backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.100' : 'grey.200' }}>
-                <Box component="tr">
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Equipment</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Lab</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Issue</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Status Before</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Reported</Box>
-                  <Box component="th" sx={{ textAlign: 'left', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Fixed</Box>
-                  <Box component="th" sx={{ textAlign: 'right', p: 1.5, color: 'text.primary', fontWeight: 600 }}>Actions</Box>
-                </Box>
-              </Box>
-              <Box component="tbody">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+                <tr>
+                  <th className="px-6 py-4 whitespace-nowrap">Equipment</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Lab</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Issue</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Status Before</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Reported</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Fixed</th>
+                  {isAdmin && <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-color)]">
                 {filtered.map((row) => (
-                  <Box key={row.id} component="tr" sx={{ '&:nth-of-type(even)': { backgroundColor: (theme) => theme.palette.mode === 'light' ? 'grey.50' : 'grey.100' } }}>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{row.equipment_name || `Equipment #${row.equipment}`}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{labs.find((l) => l.id === row.lab)?.name || (row.lab ?? '-')}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.primary' }}>{row.title}</Box>
-                    <Box component="td" sx={{ p: 1.5, textTransform: 'capitalize', color: 'text.primary' }}>{row.status}</Box>
-                    <Box component="td" sx={{ p: 1.5, textTransform: 'capitalize', color: 'text.secondary' }}>{row.status_before.replace('_', ' ')}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{row.reported_on?.slice(0,10)}</Box>
-                    <Box component="td" sx={{ p: 1.5, color: 'text.secondary' }}>{row.fixed_on ? row.fixed_on.slice(0,10) : '-'}</Box>
-                    <Box component="td" sx={{ p: 1.5, textAlign: 'right' }}>
-                      {isAdmin && (
-                        <>
+                  <tr 
+                    key={row.id} 
+                    className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
+                  >
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-primary)] font-medium">
+                      {row.equipment_name || `Equipment #${row.equipment}`}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
+                      {labs.find((l) => l.id === row.lab)?.name || (row.lab ?? '-')}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-primary)]">
+                      {row.title}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2.5 py-0.5 text-xs font-medium rounded-full ${
+                        row.status === 'fixed' 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50' 
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50'
+                      }`}>
+                        {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)] capitalize">
+                      {row.status_before.replace('_', ' ')}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)] whitespace-nowrap">
+                      {row.reported_on?.slice(0,10)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)] whitespace-nowrap">
+                      {row.fixed_on ? row.fixed_on.slice(0,10) : '-'}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
                           <Tooltip title="Edit">
-                            <IconButton color="info" onClick={() => openEdit(row)}>
-                              <Edit />
-                            </IconButton>
+                            <button
+                              onClick={() => openEdit(row)}
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <Edit fontSize="small" />
+                            </button>
                           </Tooltip>
                           <Tooltip title="Delete">
-                            <IconButton color="error" onClick={() => confirmDelete(row.id)}>
-                              <Delete />
-                            </IconButton>
+                            <button
+                              onClick={() => confirmDelete(row.id)}
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <Delete fontSize="small" />
+                            </button>
                           </Tooltip>
-                        </>
-                      )}
-                    </Box>
-                  </Box>
+                        </Stack>
+                      </td>
+                    )}
+                  </tr>
                 ))}
-              </Box>
-            </Box>
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="md">
-        <DialogTitle>{editingId ? 'Edit Maintenance' : (isAdmin ? 'Add Maintenance' : 'Report Issue')}</DialogTitle>
-        <Box component="form" onSubmit={handleSave}>
-          <DialogContent>
-            <Stack spacing={2}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField select label="Equipment" value={formData.equipment} onChange={(e) => {
-                  const equipId = Number(e.target.value);
-                  const selectedEquip = equipment.find(eq => eq.id === equipId);
-                  setFormData({ ...formData, equipment: equipId, status_before: selectedEquip?.status || 'working' });
-                }} required fullWidth>
-                  {equipment.map((e) => (
-                    <MenuItem key={e.id} value={e.id}>{e.equipment_type} - {e.brand || 'Unknown'} (Lab: {labs.find(l => l.id === e.lab)?.name || e.lab})</MenuItem>
-                  ))}
-                </TextField>
-                <TextField label="Issue Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required fullWidth />
-              </Stack>
-              <TextField label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} multiline minRows={3} fullWidth />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField select label="Status Before" value={formData.status_before} onChange={(e) => setFormData({ ...formData, status_before: e.target.value as any })} fullWidth>
-                  {EQUIPMENT_STATUS.map((s) => (
-                    <MenuItem key={s} value={s}>{s.replace('_', ' ')}</MenuItem>
-                  ))}
-                </TextField>
-                <TextField select label="Current Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} fullWidth disabled={!isAdmin}>
-                  {STATUS.map((s) => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
-                </TextField>
-                {formData.status === 'fixed' && (
-                  <TextField select label="Status After Fix" value={formData.status_after} onChange={(e) => setFormData({ ...formData, status_after: e.target.value as any })} fullWidth disabled={!isAdmin}>
-                    {EQUIPMENT_STATUS.map((s) => (
-                      <MenuItem key={s} value={s}>{s.replace('_', ' ')}</MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField label="Reported On" type="date" value={formData.reported_on.slice(0,10)} onChange={(e) => setFormData({ ...formData, reported_on: new Date(e.target.value).toISOString() })} InputLabelProps={{ shrink: true }} disabled={!isAdmin} />
-                <TextField label="Fixed On" type="date" value={formData.fixed_on ? formData.fixed_on.slice(0,10) : ''} onChange={(e) => setFormData({ ...formData, fixed_on: e.target.value ? new Date(e.target.value).toISOString() : null })} InputLabelProps={{ shrink: true }} disabled={!isAdmin || formData.status !== 'fixed'} />
-              </Stack>
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenForm(false)}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
-
-      {/* Delete confirm */}
-      {isAdmin && (
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>Delete Maintenance?</DialogTitle>
-        <DialogContent>
-          <Typography>Are you sure you want to delete this log? This action cannot be undone.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">Delete</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Success/Error Messages */}
+      {error && (
+        <div className="rounded-xl p-4 border" style={{ 
+          backgroundColor: '#FEE2E2', 
+          borderColor: '#FCA5A5'
+        }}>
+          <p className="text-sm" style={{ color: '#DC2626' }}>{error}</p>
+        </div>
       )}
 
-      {/* Alerts */}
-      <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
-        <Alert severity="error" onClose={() => setError('')} sx={{ whiteSpace: 'pre-line' }}>{error}</Alert>
-      </Snackbar>
-      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
-        <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>
-      </Snackbar>
-    </Box>
+      {success && (
+        <div className="rounded-xl p-4 border" style={{ 
+          backgroundColor: '#D1FAE5', 
+          borderColor: '#6EE7B7'
+        }}>
+          <p className="text-sm" style={{ color: '#065F46' }}>{success}</p>
+        </div>
+      )}
+
+      {/* Form Dialog */}
+      <Dialog open={openForm} onClose={() => setOpenForm(false)} maxWidth="sm" fullWidth PaperProps={{ style: { backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)', backgroundImage: 'none' } }}>
+        <form onSubmit={handleSave}>
+          <DialogTitle style={{ color: 'var(--text-primary)' }}>{editingId ? 'Edit Maintenance Log' : 'Report Issue'}</DialogTitle>
+          <DialogContent dividers style={{ borderColor: 'var(--border-color)' }}>
+            <Stack spacing={3} sx={{ mt: 1 }}>
+              <TextField
+                select
+                label="Target Equipment"
+                value={formData.equipment}
+                onChange={(e) => setFormData({ ...formData, equipment: e.target.value })}
+                required
+                fullWidth
+                slotProps={{
+                  inputLabel: { style: { color: 'var(--text-secondary)' } },
+                  input: { style: { color: 'var(--text-primary)' } }
+                }}
+              >
+                <MenuItem value="" disabled>Select target</MenuItem>
+                <optgroup label="PCs">
+                  {pcs.map((p) => (
+                    <MenuItem key={`pc-${p.id}`} value={`pc-${p.id}`}>PC: {p.device_name} (Lab {p.lab})</MenuItem>
+                  ))}
+                </optgroup>
+                <optgroup label="Lab Equipment">
+                  {equipment.map((e) => (
+                    <MenuItem key={`eq-${e.id}`} value={`eq-${e.id}`}>{e.equipment_type} - {e.brand || 'Unknown'} (Lab {e.lab})</MenuItem>
+                  ))}
+                </optgroup>
+              </TextField>
+
+              <TextField
+                label="Issue Title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+                fullWidth
+                slotProps={{
+                  inputLabel: { style: { color: 'var(--text-secondary)' } },
+                  input: { style: { color: 'var(--text-primary)' } }
+                }}
+              />
+
+              <TextField
+                label="Description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                multiline
+                rows={3}
+                fullWidth
+                slotProps={{
+                  inputLabel: { style: { color: 'var(--text-secondary)' } },
+                  input: { style: { color: 'var(--text-primary)' } }
+                }}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <TextField
+                  select
+                  label="Status"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                  fullWidth
+                  slotProps={{
+                    inputLabel: { style: { color: 'var(--text-secondary)' } },
+                    input: { style: { color: 'var(--text-primary)' } }
+                  }}
+                >
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="fixed">Fixed</MenuItem>
+                </TextField>
+
+                <TextField
+                  select
+                  label="Status Before"
+                  value={formData.status_before}
+                  onChange={(e) => setFormData({ ...formData, status_before: e.target.value as any })}
+                  fullWidth
+                  slotProps={{
+                    inputLabel: { style: { color: 'var(--text-secondary)' } },
+                    input: { style: { color: 'var(--text-primary)' } }
+                  }}
+                >
+                  <MenuItem value="working">Working</MenuItem>
+                  <MenuItem value="not_working">Not Working</MenuItem>
+                  <MenuItem value="under_repair">Under Repair</MenuItem>
+                </TextField>
+              </div>
+
+              {formData.status === 'fixed' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <TextField
+                    type="datetime-local"
+                    label="Fixed On"
+                    value={formData.fixed_on ? formData.fixed_on.slice(0, 16) : ''}
+                    onChange={(e) => setFormData({ ...formData, fixed_on: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                    fullWidth
+                    InputLabelProps={{ shrink: true, style: { color: 'var(--text-secondary)' } }}
+                    slotProps={{ input: { style: { color: 'var(--text-primary)' } } }}
+                  />
+                  <TextField
+                    select
+                    label="Status After"
+                    value={formData.status_after}
+                    onChange={(e) => setFormData({ ...formData, status_after: e.target.value as any })}
+                    fullWidth
+                    slotProps={{
+                      inputLabel: { style: { color: 'var(--text-secondary)' } },
+                      input: { style: { color: 'var(--text-primary)' } }
+                    }}
+                  >
+                    <MenuItem value="">Not Specified</MenuItem>
+                    <MenuItem value="working">Working</MenuItem>
+                    <MenuItem value="not_working">Not Working</MenuItem>
+                    <MenuItem value="under_repair">Under Repair</MenuItem>
+                  </TextField>
+                </div>
+              )}
+            </Stack>
+          </DialogContent>
+          <DialogActions style={{ padding: '16px', borderColor: 'var(--border-color)' }}>
+            <Button onClick={() => setOpenForm(false)} style={{ color: 'var(--text-secondary)' }}>Cancel</Button>
+            <Button 
+              type="submit" 
+              variant="contained" 
+              disabled={saving}
+              style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}
+            >
+              {saving ? <CircularProgress size={24} color="inherit" /> : 'Save Log'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </div>
   );
 };
 

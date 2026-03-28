@@ -1,16 +1,110 @@
+/* Tailwind CSS v4 — single import replaces @tailwind directives */
 @import "tailwindcss";
 
-/* App base styles */
-html, body, #root {
-  height: 100%;
+/* ── Theme customisation (Tailwind v4 syntax) ───────────────────── */
+@theme {
+  /* Font */
+  --font-sans: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+
+  /* Brand blue palette */
+  --color-brand-50:  #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+
+  /* Card shadows */
+  --shadow-card:       0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.09), 0 2px 4px rgba(0,0,0,0.06);
+
+  /* Animations */
+  --animate-fade-in:  fadeIn  0.35s ease both;
+  --animate-slide-up: slideUp 0.4s  ease both;
+
+  @keyframes fadeIn  { from { opacity: 0; transform: translateY(8px)  } to { opacity: 1; transform: none } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: none } }
+  @keyframes panBackground { 
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
 }
+
+/* Enable manual dark mode via .dark class */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Base ───────────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
 
 body {
-  margin: 0;
-  min-height: 100vh;
+  background-color: #f8fafc;
+  color: #1e293b;
+  font-family: var(--font-sans);
 }
 
-/* Smooth transitions for layout */
-.transition-base {
-  @apply transition-all duration-300 ease-out;
+/* ── Custom scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Utility classes (plain CSS — no @apply) ─────────────────────  */
+
+/* Labguru-style white panel */
+.panel, .glass-panel {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+
+/* Hoverable stat card */
+.stat-card, .glass-card {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.stat-card:hover, .glass-card:hover {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+/* Nav label (sidebar text) — hidden until sidebar expands */
+.nav-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #2563eb, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Page titles */
+.page-title   { font-size: 1.5rem; font-weight: 700; color: #1e293b; letter-spacing: -0.02em; }
+.page-subtitle { font-size: 0.875rem; color: #64748b; margin-top: 2px; }
+
+/* Animations */
+.animate-fade-in  { animation: var(--animate-fade-in); }
+.animate-slide-up { animation: var(--animate-slide-up); }
+
+/* ── Dark mode ───────────────────────────────────────────────────── */
+.dark body { background-color: #030712; color: #f1f5f9; }
+.dark .panel, .dark .glass-panel { background: #111827; border-color: #1f2937; }
+.dark .stat-card, .dark .glass-card { background: #111827; border-color: #1f2937; }
+.dark .page-title { color: #f1f5f9; }
+.dark .page-subtitle { color: #94a3b8; }
+
+/* Scrollbar in dark */
+.dark ::-webkit-scrollbar-thumb { background: #374151; }
+
+/* Scrollbar-hide utility */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }

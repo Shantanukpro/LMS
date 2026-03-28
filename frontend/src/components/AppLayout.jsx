@@ -2,28 +2,42 @@ import React from 'react';
 import Sidebar from './Sidebar.jsx';
 import HeaderBar from './HeaderBar.jsx';
 import { useColorMode } from '../contexts/ThemeContext';
+import bgImage from '../assets/tech_lab_bg.png';
 
 const AppLayout = ({ children }) => {
   const { mode } = useColorMode();
 
-  // Sync Tailwind's dark mode class with ThemeContext
   React.useEffect(() => {
     const root = document.documentElement;
-    if (mode === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
+    if (mode === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
   }, [mode]);
 
   return (
-    <div className={`min-h-screen ${mode === 'dark' ? 'bg-[#1e1e1e] text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
-      {/* Fixed header with logo + college name + top nav */}
+    <div className="relative min-h-screen bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+      {/* ── Global Animated Tech Background ── */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div 
+          className="absolute inset-[-15%] opacity-15 dark:opacity-20"
+          style={{
+            backgroundImage: `url(${bgImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            animation: 'panBackground 40s ease-in-out infinite alternate',
+          }}
+        />
+        {/* Soft edge gradient to blend into main background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#f8fafc]/30 to-[#f8fafc] dark:via-[#030712]/30 dark:to-[#030712] pointer-events-none" />
+      </div>
+
       <HeaderBar />
-
-      {/* Sidebar under the header */}
       <Sidebar />
-
-      {/* Main content on the right, shifts when sidebar expands */}
-      <main className="transition-all duration-300 ease-out ml-16 peer-hover:ml-64 pt-14">
-        <div className="p-4 sm:p-6 md:p-8">
+      {/* Main content area — offset for fixed sidebar (w-16) and fixed header (h-16) */}
+      <main className="relative z-10 transition-all duration-300 ease-out ml-16 peer-hover:ml-60 pt-16">
+        <div className="p-6 sm:p-8 max-w-[1600px]">
           {children}
         </div>
       </main>

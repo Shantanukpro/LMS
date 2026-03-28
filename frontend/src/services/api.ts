@@ -1,14 +1,25 @@
 import axios from 'axios';
 import type { 
+  User, Lab, PC, LabEquipment, NetworkEquipmentDetails, ServerDetails,
+  ProjectorDetails, ElectricalApplianceDetails, CPU, OS, Peripheral, Software, 
+  MaintenanceLog, ImportResult, BulkImportRequest, MaintenanceNotification,
+  LoginRequest, RegisterRequest, AuthResponse 
   User, Lab, PC, Equipment, Software, MaintenanceLog, Inventory,
   LoginRequest, RegisterRequest, AuthResponse,
-  MusterSession, MusterSessionCreate, MusterEntry
+  MusterSession, MusterSessionCreate, MusterEntryhttps://github.com/Shantanukpro/LMS/pull/4/conflict?name=frontend%252Fsrc%252Ftypes%252Findex.ts&ancestor_oid=642a463e7b010689f94db3462a4c92ebc9926861&base_oid=a6f652ca116da541b04fd11c24d5fbe2067dfeb3&head_oid=a31934ebd0a5fa4e027f03975738bc19bd6c5107
 } from '../types';
 
 // We'll define the Muster types in types.ts later, but for now use any or extend types.
 // For simplicity, we'll use any and update types.ts separately if needed.
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+
+// Helper to extract results from DRF paginated responses
+const extractResults = <T>(data: any): T[] => {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.results)) return data.results;
+  return [];
+};
 
 // Create axios instance
 const api = axios.create({
@@ -80,12 +91,12 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (refreshError) {
           clearTokens();
-          // Avoid hard redirect to prevent flicker; let app routing handle it
+          window.location.href = '/login';
           return Promise.reject(refreshError);
         }
       } else {
         clearTokens();
-        // No refresh token available; let caller handle navigation
+        window.location.href = '/login';
         return Promise.reject(error);
       }
     }
@@ -117,7 +128,7 @@ export const authAPI = {
 export const labsAPI = {
   getAll: async (): Promise<Lab[]> => {
     const response = await api.get('/labs/');
-    return response.data;
+    return extractResults<Lab>(response.data);
   },
   
   getById: async (id: number): Promise<Lab> => {
@@ -140,12 +151,29 @@ export const labsAPI = {
   },
 };
 
-// LabEquipment API (non-PC hardware)
+// LabEquipment API (comprehensive equipment management)
 export const labEquipmentAPI = {
-  getAll: async (): Promise<any[]> => {
+  getAll: async (): Promise<LabEquipment[]> => {
     const response = await api.get('/lab-equipment/');
+    return extractResults<LabEquipment>(response.data);
+  },
+
+  getById: async (id: number): Promise<LabEquipment> => {
+    const response = await api.get(`/lab-equipment/${id}/`);
     return response.data;
   },
+
+  getByLab: async (labId: number): Promise<LabEquipment[]> => {
+    const response = await api.get(`/labs/${labId}/equipment/`);
+    return extractResults<LabEquipment>(response.data);
+  },
+
+  create: async (data: Partial<LabEquipment>): Promise<LabEquipment> => {
+    const response = await api.post('/lab-equipment/', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: Partial<LabEquipment>): Promise<LabEquipment> => {
   
   getByLab: async (labId: number): Promise<any[]> => {
     const all = await labEquipmentAPI.getAll();
@@ -165,13 +193,42 @@ export const labEquipmentAPI = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/lab-equipment/${id}/`);
   },
+
+  // Network equipment details
+  updateNetworkDetails: async (equipmentId: number, data: Partial<NetworkEquipmentDetails>): Promise<NetworkEquipmentDetails> => {
+    const response = await api.patch(`/lab-equipment/${equipmentId}/network-details/`, data);
+    return response.data;
+  },
+
+  // Server details
+  updateServerDetails: async (equipmentId: number, data: Partial<ServerDetails>): Promise<ServerDetails> => {
+    const response = await api.patch(`/lab-equipment/${equipmentId}/server-details/`, data);
+    return response.data;
+  },
+
+  // Projector details
+  updateProjectorDetails: async (equipmentId: number, data: Partial<ProjectorDetails>): Promise<ProjectorDetails> => {
+    const response = await api.patch(`/lab-equipment/${equipmentId}/projector-details/`, data);
+    return response.data;
+  },
+
+  // Electrical appliance details
+  updateElectricalDetails: async (equipmentId: number, data: Partial<ElectricalApplianceDetails>): Promise<ElectricalApplianceDetails> => {
+    const response = await api.patch(`/lab-equipment/${equipmentId}/electrical-details/`, data);
+    return response.data;
+  },
 };
 
-// PCs API
+// PCs API with enhanced functionality
 export const pcsAPI = {
+  getAll: async (): Promise<PC[]> => {
+    const response = await api.get('/pcs/');
+    return extractResults<PC>(response.data);
+  },
+
   getByLab: async (labId: number): Promise<PC[]> => {
     const response = await api.get(`/labs/${labId}/pcs/`);
-    return response.data;
+    return extractResults<PC>(response.data);
   },
   
   getById: async (id: number): Promise<PC> => {
@@ -179,8 +236,8 @@ export const pcsAPI = {
     return response.data;
   },
   
-  create: async (labId: number, data: Omit<PC, 'id' | 'lab'>): Promise<PC> => {
-    const response = await api.post(`/labs/${labId}/pcs/`, data);
+  create: async (labId: number, data: Partial<PC>): Promise<PC> => {
+    const response = await api.post(`/labs/${labId}/pcs/`, { ...data, lab: labId });
     return response.data;
   },
   
@@ -192,14 +249,47 @@ export const pcsAPI = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/pcs/${id}/`);
   },
-};
 
-// Equipment API
-export const equipmentAPI = {
-  getAll: async (): Promise<Equipment[]> => {
-    const response = await api.get('/equipment/');
+  // CPU management
+  getCPU: async (pcId: number): Promise<CPU> => {
+    const response = await api.get(`/pcs/${pcId}/cpu/`);
     return response.data;
   },
+
+  updateCPU: async (pcId: number, data: Partial<CPU>): Promise<CPU> => {
+    const response = await api.patch(`/pcs/${pcId}/cpu/`, data);
+    return response.data;
+  },
+
+  // OS management
+  getOS: async (pcId: number): Promise<OS> => {
+    const response = await api.get(`/pcs/${pcId}/os/`);
+    return response.data;
+  },
+
+  updateOS: async (pcId: number, data: Partial<OS>): Promise<OS> => {
+    const response = await api.patch(`/pcs/${pcId}/os/`, data);
+    return response.data;
+  },
+
+  // Peripherals management
+  getPeripherals: async (pcId: number): Promise<Peripheral[]> => {
+    const response = await api.get(`/pcs/${pcId}/peripherals/`);
+    return extractResults<Peripheral>(response.data);
+  },
+
+  addPeripheral: async (pcId: number, data: Omit<Peripheral, 'id' | 'pc' | 'created_at' | 'updated_at'>): Promise<Peripheral> => {
+    const response = await api.post(`/pcs/${pcId}/peripherals/`, data);
+    return response.data;
+  },
+
+  updatePeripheral: async (id: number, data: Partial<Peripheral>): Promise<Peripheral> => {
+    const response = await api.patch(`/peripherals/${id}/`, data);
+    return response.data;
+  },
+
+  deletePeripheral: async (id: number): Promise<void> => {
+    await api.delete(`/peripherals/${id}/`);
   
   getById: async (id: number): Promise<Equipment> => {
     const response = await api.get(`/equipment/${id}/`);
@@ -221,11 +311,17 @@ export const equipmentAPI = {
   },
 };
 
+
 // Software API
 export const softwareAPI = {
+  getByPC: async (pcId: number): Promise<Software[]> => {
+    const response = await api.get(`/pcs/${pcId}/software/`);
+    return extractResults<Software>(response.data);
+  },
+  
   getAll: async (): Promise<Software[]> => {
     const response = await api.get('/software/');
-    return response.data;
+    return extractResults<Software>(response.data);
   },
   
   getById: async (id: number): Promise<Software> => {
@@ -233,8 +329,8 @@ export const softwareAPI = {
     return response.data;
   },
   
-  create: async (data: Omit<Software, 'id'>): Promise<Software> => {
-    const response = await api.post('/software/', data);
+  create: async (pcId: number, data: Omit<Software, 'id' | 'pc'>): Promise<Software> => {
+    const response = await api.post(`/pcs/${pcId}/software/`, data);
     return response.data;
   },
   
@@ -248,11 +344,26 @@ export const softwareAPI = {
   },
 };
 
-// Maintenance API
+// Maintenance API with enhanced functionality
 export const maintenanceAPI = {
   getAll: async (): Promise<MaintenanceLog[]> => {
     const response = await api.get('/maintenance/');
-    return response.data;
+    return extractResults<MaintenanceLog>(response.data);
+  },
+
+  getByLab: async (labId: number): Promise<MaintenanceLog[]> => {
+    const response = await api.get(`/labs/${labId}/maintenance/`);
+    return extractResults<MaintenanceLog>(response.data);
+  },
+
+  getByPC: async (pcId: number): Promise<MaintenanceLog[]> => {
+    const response = await api.get(`/pcs/${pcId}/maintenance/`);
+    return extractResults<MaintenanceLog>(response.data);
+  },
+
+  getByEquipment: async (equipmentId: number): Promise<MaintenanceLog[]> => {
+    const response = await api.get(`/lab-equipment/${equipmentId}/maintenance/`);
+    return extractResults<MaintenanceLog>(response.data);
   },
   
   getById: async (id: number): Promise<MaintenanceLog> => {
@@ -275,30 +386,47 @@ export const maintenanceAPI = {
   },
 };
 
-// Inventory API
-export const inventoryAPI = {
-  getAll: async (): Promise<Inventory[]> => {
-    const response = await api.get('/inventory/');
+// Bulk Import API
+export const importAPI = {
+  importLabs: async (file: File): Promise<ImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/import/labs/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   },
-  
-  getById: async (id: number): Promise<Inventory> => {
-    const response = await api.get(`/inventory/${id}/`);
+
+  importPCs: async (file: File, labId?: number): Promise<ImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (labId) {
+      formData.append('lab_id', labId.toString());
+    }
+    const response = await api.post('/import/pcs/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   },
-  
-  create: async (data: Omit<Inventory, 'id'>): Promise<Inventory> => {
-    const response = await api.post('/inventory/', data);
+
+  importLabEquipment: async (file: File, labId?: number): Promise<ImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (labId) {
+      formData.append('lab_id', labId.toString());
+    }
+    const response = await api.post('/import/lab-equipment/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   },
-  
-  update: async (id: number, data: Partial<Inventory>): Promise<Inventory> => {
-    const response = await api.patch(`/inventory/${id}/`, data);
+};
+
+// Notification API
+export const notificationAPI = {
+  sendMaintenanceNotification: async (data: MaintenanceNotification): Promise<boolean> => {
+    const response = await api.post('/notifications/maintenance/', data);
     return response.data;
-  },
-  
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/inventory/${id}/`);
   },
 };
 

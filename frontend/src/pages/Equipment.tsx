@@ -25,41 +25,52 @@ import {
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
-import { equipmentAPI, labsAPI } from '../services/api';
-import type { Equipment as EquipmentType, Lab } from '../types';
+import { labEquipmentAPI, labsAPI } from '../services/api';
+import type { LabEquipment, Lab } from '../types';
  
 
 const EQUIPMENT_TYPES = [
-  'PC', 'MONITOR', 'KEYBOARD', 'MOUSE', 'ROUTER', 'SWITCH', 'SERVER', 'FAN', 'LIGHT', 'OTHER',
+  'SERVER', 'ROUTER', 'SWITCH', 'HUB', 'PROJECTOR', 'E_BOARD', 'AC', 'FAN', 'LIGHT', 'UPS', 'OTHER',
 ] as const;
 const STATUS = ['working', 'not_working', 'under_repair'] as const;
 
 type EquipmentForm = {
   lab: number | '';
+  name: string;
+  equipment_code: string;
   equipment_type: (typeof EQUIPMENT_TYPES)[number] | '';
   brand: string;
   model_name: string;
-  serial_number: string;
   location_in_lab: string;
-  price: string;
   status: (typeof STATUS)[number] | '';
 };
 
 const emptyForm: EquipmentForm = {
   lab: '',
+  name: '',
+  equipment_code: '',
   equipment_type: '',
   brand: '',
   model_name: '',
-  serial_number: '',
   location_in_lab: '',
-  price: '',
   status: 'working',
+};
+
+const getStatusBadge = (status: string) => {
+  const s = status?.toLowerCase() || '';
+  if (s === 'working') {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">Working</span>;
+  }
+  if (s === 'not_working') {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50">Not Working</span>;
+  }
+  return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 capitalize">{status.replace('_', ' ')}</span>;
 };
 
 const Equipment: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [items, setItems] = useState<EquipmentType[]>([]);
+  const [items, setItems] = useState<LabEquipment[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,7 +98,7 @@ const Equipment: React.FC = () => {
       setError('');
 
       const [eqps, labsData] = await Promise.all([
-        equipmentAPI.getAll(),
+        labEquipmentAPI.getAll(),
         labsAPI.getAll(),
       ]);
       // Extract results from paginated responses (or plain arrays)
@@ -113,7 +124,7 @@ const Equipment: React.FC = () => {
       const matchLab = fLab ? it.lab === fLab : true;
       const matchType = fType ? it.equipment_type === fType : true;
       const matchStatus = fStatus ? it.status === fStatus : true;
-      const text = `${it.brand ?? ''} ${it.model_name ?? ''} ${it.serial_number ?? ''}`.toLowerCase();
+      const text = `${it.brand ?? ''} ${it.model_name ?? ''}`.toLowerCase();
       const matchQ = q ? text.includes(q.toLowerCase()) : true;
       return matchLab && matchType && matchStatus && matchQ;
     });
@@ -125,16 +136,16 @@ const Equipment: React.FC = () => {
     setOpenForm(true);
   };
 
-  const openEdit = (row: EquipmentType) => {
+  const openEdit = (row: LabEquipment) => {
     setEditingId(row.id);
     setFormData({
       lab: row.lab,
+      name: row.name || '',
+      equipment_code: row.equipment_code,
       equipment_type: row.equipment_type,
       brand: row.brand || '',
       model_name: row.model_name || '',
-      serial_number: row.serial_number || '',
       location_in_lab: row.location_in_lab || '',
-      price: row.price ? String(row.price) : '',
       status: row.status,
     });
     setOpenForm(true);
@@ -142,28 +153,28 @@ const Equipment: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.lab || !formData.equipment_type) {
-      setError('Lab and equipment type are required');
+    if (!formData.lab || !formData.equipment_type || !formData.name.trim() || !formData.equipment_code.trim()) {
+      setError('Lab, equipment type, name, and equipment code are required');
       return;
     }
     try {
       setSaving(true);
       const payload = {
         lab: formData.lab,
+        name: formData.name.trim(),
+        equipment_code: formData.equipment_code.trim(),
         equipment_type: formData.equipment_type,
         brand: formData.brand || undefined,
         model_name: formData.model_name || undefined,
-        serial_number: formData.serial_number || undefined,
         location_in_lab: formData.location_in_lab || undefined,
-        price: formData.price ? Number(formData.price) : undefined,
         status: formData.status || 'working',
       };
       if (editingId) {
-        const updated = await equipmentAPI.update(editingId, payload);
+        const updated = await labEquipmentAPI.update(editingId, payload);
         setItems((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
         setSuccess('Equipment updated');
       } else {
-        const created = await equipmentAPI.create(payload as any);
+        const created = await labEquipmentAPI.create(payload as any);
         setItems((prev) => [created, ...prev]);
         setSuccess('Equipment created');
       }
@@ -191,7 +202,7 @@ const Equipment: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await equipmentAPI.delete(deleteId);
+      await labEquipmentAPI.delete(deleteId);
       setItems((prev) => prev.filter((x) => x.id !== deleteId));
       setSuccess('Equipment deleted');
     } catch (e) {
@@ -204,17 +215,21 @@ const Equipment: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Equipment
-      </Typography>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: '-0.3px' }}>Equipment</Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>Manage and track all lab equipment</Typography>
+      </Box>
 
       {/* Filters */}
-      <Card sx={{ mb: 2 }}>
+      <Card
+        className="panel"
+        sx={{ mb: 4, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' }}
+      >
         <CardContent>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
             <TextField
               label="Search"
-              placeholder="Brand, model or serial..."
+              placeholder="Brand or model..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
               InputProps={{
@@ -270,78 +285,76 @@ const Equipment: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', color: 'text.secondary', py: 8 }}>
-            <Typography variant="h6">
-              {items.length > 0 ? 'No equipment matches your search' : 'No equipment found'}
-            </Typography>
-            <Typography>
-              {items.length > 0 ? 'Try different filters.' : 'Click "Add Equipment" to create some.'}
-            </Typography>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm p-8 text-center text-[var(--text-secondary)]">
+          <Typography variant="h6" sx={{ mb: 1, color: 'var(--text-primary)' }}>
+            {items.length > 0 ? 'No equipment matches your search' : 'No equipment found'}
+          </Typography>
+          <Typography>
+            {items.length > 0 ? 'Try different filters.' : 'Click "Add Equipment" to create some.'}
+          </Typography>
+        </div>
       ) : (
-        <Grid container spacing={3}>
-          {filtered.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: 3,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  transition: 'transform 180ms ease, box-shadow 180ms ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-                  },
-                }}
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                    <Typography variant="h6" component="div" sx={{ fontWeight: 600, mb: 0.5 }}>
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+                <tr>
+                  <th className="px-6 py-4 whitespace-nowrap">Lab & Location</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Brand / Model</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Type</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                  {isAdmin && <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-color)]">
+                {filtered.map((item) => (
+                  <tr 
+                    key={item.id} 
+                    className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
+                  >
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">
+                      <div className="font-medium text-[var(--text-primary)]">
+                        {labs.find(l => l.id === item.lab)?.name || 'N/A'}
+                      </div>
+                      <div className="text-xs mt-0.5">{item.location_in_lab || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-primary)] font-medium">
                       {item.brand || 'Generic'} {item.model_name}
-                    </Typography>
-                    <Chip
-                      label={item.status.replace('_', ' ')}
-                      color={item.status === 'working' ? 'success' : item.status === 'not_working' ? 'error' : 'warning'}
-                      size="small"
-                      sx={{ textTransform: 'capitalize' }}
-                    />
-                  </Stack>
-                  <Typography color="text.secondary" variant="body2" gutterBottom>
-                    {item.equipment_type}
-                  </Typography>
-                  <Divider sx={{ my: 1.5 }} />
-                  <Typography variant="body2">
-                    <strong>Lab:</strong> {labs.find(l => l.id === item.lab)?.name || 'N/A'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Serial:</strong> {item.serial_number || '-'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Location:</strong> {item.location_in_lab || '-'}
-                  </Typography>
-                </CardContent>
-                {isAdmin && (
-                  <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
-                    <Tooltip title="Edit">
-                      <IconButton color="info" size="small" onClick={() => openEdit(item)}>
-                        <Edit fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton color="error" size="small" onClick={() => confirmDelete(item.id)}>
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </CardActions>
-                )}
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
+                      {item.equipment_type}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(item.status)}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Tooltip title="Edit">
+                            <button
+                              onClick={() => openEdit(item)}
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <Edit fontSize="small" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <button
+                              onClick={() => confirmDelete(item.id)}
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <Delete fontSize="small" />
+                            </button>
+                          </Tooltip>
+                        </Stack>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* Create/Edit Dialog */}
@@ -364,15 +377,15 @@ const Equipment: React.FC = () => {
                 </TextField>
               </Stack>
               <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                <TextField label="Equipment Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required fullWidth />
+                <TextField label="Equipment Code" value={formData.equipment_code} onChange={(e) => setFormData({ ...formData, equipment_code: e.target.value })} required fullWidth />
+              </Stack>
+              <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
                 <TextField label="Brand" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} fullWidth />
                 <TextField label="Model" value={formData.model_name} onChange={(e) => setFormData({ ...formData, model_name: e.target.value })} fullWidth />
               </Stack>
               <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-                <TextField label="Serial" value={formData.serial_number} onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} fullWidth />
                 <TextField label="Location" value={formData.location_in_lab} onChange={(e) => setFormData({ ...formData, location_in_lab: e.target.value })} fullWidth />
-              </Stack>
-              <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-                <TextField label="Price" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} fullWidth />
                 <TextField select label="Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} fullWidth>
                   {STATUS.map((s) => (
                     <MenuItem key={s} value={s} style={{ textTransform: 'capitalize' }}>{s.replace('_', ' ')}</MenuItem>

@@ -22,10 +22,6 @@ class Migration(migrations.Migration):
             name='peripheral',
             options={'ordering': ['pc', 'peripheral_type']},
         ),
-        migrations.AlterUniqueTogether(
-            name='peripheral',
-            unique_together=set(),
-        ),
         migrations.AlterField(
             model_name='labequipment',
             name='equipment_code',

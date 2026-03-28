@@ -9,16 +9,17 @@ import {
   Package,
   Sun,
   Moon,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useColorMode } from '../contexts/ThemeContext';
 
 const menuItems = [
-  { name: 'Labs', icon: Building2, path: '/labs' },
-  { name: 'PCs', icon: Monitor, path: '/pcs' },
-  { name: 'Equipment', icon: Cpu, path: '/equipment' },
-  { name: 'Software', icon: Grid, path: '/software' },
-  { name: 'Maintenance', icon: Wrench, path: '/maintenance' },
-  { name: 'Inventory', icon: Package, path: '/inventory' },
+  { name: 'Labs',        icon: Building2,      path: '/labs' },
+  { name: 'PCs',         icon: Monitor,        path: '/pcs' },
+  { name: 'Equipment',   icon: Cpu,            path: '/equipment' },
+  { name: 'Software',    icon: Grid,           path: '/software' },
+  { name: 'Maintenance', icon: Wrench,         path: '/maintenance' },
+  { name: 'Inventory',   icon: Package,        path: '/inventory' },
 ];
 
 const Sidebar = () => {
@@ -27,58 +28,79 @@ const Sidebar = () => {
 
   return (
     <aside
-      className="peer group fixed left-0 top-14 z-40 h-[calc(100vh-56px)] w-16 hover:w-64 bg-[#1e1e1e] text-gray-200 border-r border-white/10 transition-all duration-300 ease-out"
+      className="peer group fixed left-0 top-16 z-40 h-[calc(100vh-64px)]
+                 w-16 hover:w-60
+                 bg-white dark:bg-gray-900
+                 border-r border-gray-100 dark:border-gray-800
+                 shadow-sm
+                 transition-all duration-300 ease-out
+                 flex flex-col"
       aria-label="Sidebar"
     >
-      <div className="flex h-full flex-col">
-        {/* Spacer (top padding) */}
-        <div className="px-3 py-2" />
+      {/* Navigation links */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 space-y-0.5 scrollbar-hide">
+        {menuItems.map(({ name, icon: Icon, path }) => {
+          const active =
+            location.pathname === path ||
+            (path !== '/' && location.pathname.startsWith(path));
 
-        {/* Middle: Navigation */}
-        <nav className="mt-2 flex-1 overflow-y-auto">
-          <ul className="space-y-1 px-2">
-            {menuItems.map(({ name, icon: Icon, path }) => {
-              const active = location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
-              return (
-                <li key={name}>
-                  <NavLink
-                    to={path}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 transition-colors duration-200 ${
-                      active
-                        ? 'bg-green-600 text-white'
-                        : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    <Icon size={20} className="shrink-0" />
-                    <span
-                      className="opacity-0 translate-x-[-6px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ease-out"
-                    >
-                      {name}
-                    </span>
-                  </NavLink>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+          return (
+            <NavLink
+              key={name}
+              to={path}
+              title={name}
+              className={`
+                flex items-center gap-3 rounded-lg px-3 py-2.5
+                transition-all duration-150 ease-in-out
+                group/item relative
+                ${active
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-100'
+                }
+              `}
+            >
+              {/* Active indicator bar */}
+              {active && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-full bg-blue-500 dark:bg-blue-400" />
+              )}
 
-        {/* Bottom: Theme toggle */}
-        <div className="mt-auto px-2 pb-3">
-          <button
-            onClick={toggleMode}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-200"
-            title="Toggle theme"
-          >
-            {mode === 'dark' ? (
-              <Sun size={20} className="shrink-0" />
-            ) : (
-              <Moon size={20} className="shrink-0" />
-            )}
-            <span className="opacity-0 translate-x-[-6px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ease-out">
-              {mode === 'dark' ? 'Light Mode' : 'Dark Mode'}
-            </span>
-          </button>
-        </div>
+              <Icon
+                size={18}
+                className={`shrink-0 transition-colors duration-150
+                  ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover/item:text-gray-600 dark:group-hover/item:text-gray-300'}
+                `}
+              />
+              <span
+                className="nav-label opacity-0 -translate-x-1 
+                           group-hover:opacity-100 group-hover:translate-x-0 
+                           transition-all duration-200 ease-out"
+              >
+                {name}
+              </span>
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      {/* Theme toggle anchored to the bottom */}
+      <div className="px-2 py-3 border-t border-gray-100 dark:border-gray-800">
+        <button
+          onClick={toggleMode}
+          title={mode === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5
+                     text-gray-500 dark:text-gray-400
+                     hover:bg-gray-50 dark:hover:bg-gray-800
+                     hover:text-gray-800 dark:hover:text-gray-100
+                     transition-all duration-150"
+        >
+          {mode === 'dark'
+            ? <Sun  size={18} className="shrink-0 text-amber-400" />
+            : <Moon size={18} className="shrink-0 text-indigo-400" />
+          }
+          <span className="nav-label opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out">
+            {mode === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          </span>
+        </button>
       </div>
     </aside>
   );
