@@ -43,7 +43,7 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
         issue_description: maintenance.issue_description || '',
         status_before: maintenance.status_before || '',
         status_after: maintenance.status_after || '',
-        status: maintenance.status,
+        status: (maintenance.status as 'pending' | 'fixed') || 'pending',
         remarks: maintenance.remarks || ''
       });
       

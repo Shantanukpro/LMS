@@ -32,6 +32,7 @@ urlpatterns = [
     # Software
     path('software/', views.SoftwareList.as_view(), name='software-list'),
     path('software/<int:pk>/', views.SoftwareDetail.as_view(), name='software-detail'),
+    path('pcs/<int:pc_id>/software/', views.PCSoftwareList.as_view(), name='pc-software-list'),
     
     # Lab Equipment (unified for non-PC hardware)
     path('lab-equipment/', views.LabEquipmentList.as_view(), name='lab-equipment-list'),

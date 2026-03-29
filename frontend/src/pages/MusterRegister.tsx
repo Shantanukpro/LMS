@@ -1,221 +1,316 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { labsAPI, musterAPI } from '../services/api';
-import type { Lab } from '../types';
-import {
-  Box,
-  Button,
+import { useAuth } from '../contexts/AuthContext';
+import type { Lab, User } from '../types';
+import { 
+  Box, 
+  CircularProgress, 
+  Snackbar, 
+  Alert, 
   Typography,
-  TextField,
-  MenuItem,
-  Stack,
-  CircularProgress,
-  Snackbar,
-  Alert,
-  IconButton,
-  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
-import { Add, Delete, Save, ArrowBack } from '@mui/icons-material';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
-interface SimplifiedPC {
-  id: number;
-  device_name: string;
+// Sub-components
+import SessionDetailsCard from '../components/Muster/SessionDetailsCard';
+import QuickStatsBar from '../components/Muster/QuickStatsBar';
+import StudentEntriesTable from '../components/Muster/StudentEntriesTable';
+import MusterBottomBar from '../components/Muster/MusterBottomBar';
+import BulkActionsBar from '../components/Muster/BulkActionsBar';
+import MusterPreviewModal from '../components/Muster/MusterPreviewModal';
+
+interface Entry {
+  sr_no: number;
+  roll_no: string;
+  student_name: string;
+  pc: number | '';
+  attendance: 'P' | 'A';
 }
 
 const MusterRegister: React.FC = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
+  const { user: currentUser } = useAuth();
+
+  // Data State
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [pcs, setPcs] = useState<SimplifiedPC[]>([]);
-  const [selectedLab, setSelectedLab] = useState<number | ''>('');
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0] as string,
-    time: '',
-    class_name: '',
-    batch: '',
-  });
-  const [entries, setEntries] = useState<Array<{ sr_no: number; roll_no: string; pc: number | '' }>>([{
-    sr_no: 1,
-    roll_no: '',
-    pc: '',
-  }]);
+  const [pcs, setPcs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isEditMode, setIsEditMode] = useState(false);
+  
+  // Form State
+  const [sessionFormData, setSessionFormData] = useState({
+    date: (new Date().toISOString().split('T')[0]) as string,
+    time: '' as string,
+    lab: '' as number | '',
+    className: '' as string,
+    batch: '' as string,
+    sessionType: 'Practical' as string,
+    duration: '120' as string,
+    subject: '' as string,
+  });
 
-  // Fetch labs on mount
+  const [entries, setEntries] = useState<Entry[]>([
+    { sr_no: 1, roll_no: '', student_name: '', pc: '', attendance: 'P' }
+  ]);
+
+  // UI State
+  const [editingIndices, setEditingIndices] = useState<Set<number>>(new Set([0]));
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = entries.length;
+    const present = entries.filter(e => e.attendance === 'P').length;
+    return { total, present, absent: total - present };
+  }, [entries]);
+
+  // Initial Fetch
   useEffect(() => {
-    const fetchLabs = async () => {
+    const fetchBaseData = async () => {
       try {
-        const data = await labsAPI.getAll();
-        setLabs(data);
-      } catch (err: any) {
-        setError('Failed to load labs');
-        console.error(err);
+        setLoading(true);
+        const labsData = await labsAPI.getAll();
+        setLabs(labsData);
+
+        if (sessionId) {
+          const session = await musterAPI.getSession(parseInt(sessionId));
+          setSessionFormData({
+            date: session.date,
+            time: session.time?.substring(0, 5) || '',
+            lab: session.lab,
+            className: session.class_name,
+            batch: session.batch,
+            sessionType: (session as any).session_type || 'Practical',
+            duration: (session as any).duration_mins?.toString() || '120',
+            subject: (session as any).subject || '',
+          });
+          
+          const mappedEntries = session.entries.map(e => ({
+            sr_no: e.sr_no,
+            roll_no: e.roll_no,
+            student_name: (e as any).student_name || '',
+            pc: e.pc,
+            attendance: (e as any).attendance || 'P'
+          }));
+          setEntries(mappedEntries);
+          setEditingIndices(new Set()); // Start with all collapsed if loaded
+        }
+      } catch (err) {
+        setError('Critical: Could not synchronize with backend.');
+      } finally {
+        setLoading(false);
       }
     };
-    fetchLabs();
-  }, []);
+    fetchBaseData();
+  }, [sessionId]);
 
   // Fetch PCs when lab changes
   useEffect(() => {
-    if (selectedLab) {
+    if (sessionFormData.lab) {
       const fetchPCs = async () => {
         try {
-          const data = await musterAPI.getPCsForLab(selectedLab as number);
+          const data = await musterAPI.getPCsForLab(sessionFormData.lab as number);
           setPcs(data);
-        } catch (err: any) {
-          setError('Failed to load PCs for the selected lab');
-          console.error(err);
+        } catch (err) {
+          setError('Warning: PC synchronization failed for this lab.');
         }
       };
       fetchPCs();
     } else {
       setPcs([]);
     }
-  }, [selectedLab]);
+  }, [sessionFormData.lab]);
 
-  // Load session data if editing
-  useEffect(() => {
-    if (sessionId) {
-      const fetchSession = async () => {
-        try {
-          setLoading(true);
-          const data = await musterAPI.getSession(parseInt(sessionId));
-          setForm({
-            date: data.date,
-            time: data.time?.substring(0, 5) || '',
-            class_name: data.class_name,
-            batch: data.batch,
-          });
-          setSelectedLab(data.lab);
-          setEntries(
-            data.entries.map((entry: any) => ({
-              sr_no: entry.sr_no,
-              roll_no: entry.roll_no,
-              pc: entry.pc || '',
-            }))
-          );
-          setIsEditMode(true);
-        } catch (err: any) {
-          setError('Failed to load session');
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchSession();
-    }
-  }, [sessionId]);
+  // Handlers
+  const handleSessionFieldChange = (field: string, value: any) => {
+    setSessionFormData(prev => ({ ...prev, [field]: value }));
+    setHasUnsavedChanges(true);
+  };
 
-  // Handle time rounding to nearest 30 minutes
   const handleTimeChange = (time: string) => {
-    if (time) {
-      const parts = time.split(':').map(Number);
-      const hours = parts[0] ?? 0;
-      const minutes = parts[1] ?? 0;
-      let roundedMinutes = 0;
-      let roundedHours = hours;
-      if (minutes < 15) {
-        roundedMinutes = 0;
-      } else if (minutes < 45) {
-        roundedMinutes = 30;
-      } else {
-        roundedMinutes = 0;
-        roundedHours = (hours + 1) % 24;
-      }
-      const roundedTime = `${String(roundedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
-      setForm(prev => ({ ...prev, time: roundedTime }));
-    } else {
-      setForm(prev => ({ ...prev, time: '' }));
+    if (!time) {
+      setSessionFormData(prev => ({ ...prev, time: '' }));
+      return;
+    }
+    const parts = time.split(':');
+    const h = parts[0] ? Number(parts[0]) : 0;
+    const m = parts[1] ? Number(parts[1]) : 0;
+    const roundedM = m < 15 ? 0 : m < 45 ? 30 : 0;
+    const roundedH = m >= 45 ? (h + 1) % 24 : h;
+    const roundedTime = `${String(roundedH).padStart(2, '0')}:${String(roundedM).padStart(2, '0')}`;
+    setSessionFormData(prev => ({ ...prev, time: roundedTime }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleEntryChange = (index: number, updates: Partial<Entry>) => {
+    setEntries(prev => prev.map((e, i) => i === index ? { ...e, ...updates } : e));
+    setHasUnsavedChanges(true);
+    
+    // Auto-disable PC if absent
+    if (updates.attendance === 'A') {
+      setEntries(prev => prev.map((e, i) => i === index ? { ...e, pc: '', attendance: 'A' } : e));
     }
   };
 
-  const handleLabChange = (value: string) => {
-    const labId = value ? Number(value) : '';
-    setSelectedLab(labId);
-    setEntries([{ sr_no: 1, roll_no: '', pc: '' }]);
-  };
-
-  // Entry management
   const handleAddRow = () => {
-    setEntries(prev => [
-      ...prev,
-      { sr_no: prev.length + 1, roll_no: '', pc: '' },
-    ]);
+    const newIdx = entries.length;
+    setEntries(prev => [...prev, {
+      sr_no: prev.length + 1,
+      roll_no: '',
+      student_name: '',
+      pc: '',
+      attendance: 'P'
+    }]);
+    setEditingIndices(prev => new Set(prev).add(newIdx));
+    setHasUnsavedChanges(true);
   };
 
   const handleRemoveRow = (index: number) => {
     if (entries.length <= 1) {
-      setError('At least one row is required');
+      setError('A valid register requires at least one student entry.');
       return;
     }
-    setEntries(prev =>
+    setEntries(prev => prev.filter((_, i) => i !== index).map((e, i) => ({ ...e, sr_no: i + 1 })));
+    setEditingIndices(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const handleToggleEdit = (index: number, isSavingRow: boolean) => {
+    setEditingIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const handleToggleSelect = (index: number) => {
+    setSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (all: boolean) => {
+    if (all) setSelectedIndices(new Set(entries.keys()));
+    else setSelectedIndices(new Set());
+  };
+
+  // Bulk Handlers
+  const handleBulkMarkAttendance = (status: 'P' | 'A') => {
+    setEntries(prev => prev.map((e, i) => 
+      selectedIndices.has(i) 
+        ? { ...e, attendance: status, pc: status === 'A' ? '' : e.pc } 
+        : e
+    ));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleBulkDelete = () => {
+    setEntries(prev => 
       prev
-        .filter((_, i) => i !== index)
+        .filter((_, i) => !selectedIndices.has(i))
         .map((e, i) => ({ ...e, sr_no: i + 1 }))
     );
+    setSelectedIndices(new Set());
+    setHasUnsavedChanges(true);
   };
 
-  const handleRollNoChange = (index: number, value: string) => {
-    setEntries(prev => prev.map((e, i) => i === index ? { ...e, roll_no: value } : e));
+  const handleReset = () => {
+    if (!hasUnsavedChanges) {
+      resetForm();
+      return;
+    }
+    setShowResetConfirm(true);
   };
 
-  const handlePcChange = (index: number, value: string) => {
-    const pcId = value ? Number(value) : '';
-    setEntries(prev => prev.map((e, i) => i === index ? { ...e, pc: pcId as number | '' } : e));
+  const resetForm = () => {
+    setSessionFormData({
+      date: new Date().toISOString().split('T')[0] ?? '',
+      time: '',
+      lab: '',
+      className: '',
+      batch: '',
+      sessionType: 'Practical',
+      duration: '120',
+      subject: '',
+    });
+    setEntries([{ sr_no: 1, roll_no: '', student_name: '', pc: '', attendance: 'P' }]);
+    setEditingIndices(new Set([0]));
+    setSelectedIndices(new Set());
+    setHasUnsavedChanges(false);
+    setShowResetConfirm(false);
   };
 
-  // Save
   const handleSave = async () => {
-    if (!form.date || !form.time || !form.class_name || !form.batch || !selectedLab) {
-      setError('Please fill in all session details (Date, Time, Lab, Class, Batch)');
+    // 1. Validation
+    if (!sessionFormData.lab || !sessionFormData.className || !sessionFormData.batch || !sessionFormData.time) {
+      setError('Information Missing: Please complete all session detail fields.');
       return;
     }
 
-    const invalidEntries = entries.some(e => !e.roll_no || !e.pc);
+    const invalidEntries = entries.some(e => e.attendance === 'P' && (!e.roll_no || e.pc === ''));
     if (invalidEntries) {
-      setError('Please fill in Roll No and PC for every entry row');
+      setError('Incomplete Entries: Roll number and PC assignment required for present students.');
+      return;
+    }
+
+    // Check duplicates
+    const rolls = entries.map(e => e.roll_no).filter(Boolean);
+    if (new Set(rolls).size !== rolls.length) {
+      setError('Duplicate Conflict: Multiple entries found for the same roll number.');
       return;
     }
 
     setSaving(true);
-    setError('');
-
     try {
-      const timeForApi = form.time.length === 5 ? `${form.time}:00` : form.time;
+      const payload: { date: string; time: string; lab: number; class_name: string; batch: string } = {
+        date: sessionFormData.date as string,
+        time: `${sessionFormData.time}:00`,
+        lab: sessionFormData.lab as number,
+        class_name: sessionFormData.className,
+        batch: sessionFormData.batch,
+      };
+
       const mappedEntries = entries.map(e => ({
         sr_no: e.sr_no,
         roll_no: e.roll_no,
         pc: e.pc as number,
       }));
 
-      if (isEditMode && sessionId) {
-        await musterAPI.updateSession(parseInt(sessionId), {
-          date: form.date,
-          time: timeForApi,
-          lab: selectedLab as number,
-          class_name: form.class_name,
-          batch: form.batch,
-          entries: mappedEntries,
+      if (sessionId) {
+        await musterAPI.updateSession(parseInt(sessionId), { 
+          ...payload, 
+          entries: mappedEntries 
         });
-        setSuccess('Muster register updated successfully');
       } else {
-        const sessionData = await musterAPI.createSession({
-          date: form.date,
-          time: timeForApi,
-          lab: selectedLab as number,
-          class_name: form.class_name,
-          batch: form.batch,
-        });
-        await musterAPI.saveEntries(sessionData.id, mappedEntries);
-        setSuccess('Muster register created successfully');
+        const session = await musterAPI.createSession(payload);
+        await musterAPI.saveEntries(session.id, mappedEntries);
       }
+
+      setSuccess('Register Committed: Attendance record successfully synchronized.');
+      setHasUnsavedChanges(false);
+      setTimeout(() => navigate('/muster/list'), 1500);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to save muster register');
-      console.error(err);
+      setError(err.response?.data?.detail || 'Handshake Error: Failed to commit register to server.');
     } finally {
       setSaving(false);
     }
@@ -223,186 +318,133 @@ const MusterRegister: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', flexWrap: 'column', alignItems: 'center', justifyContent: 'center', py: 20, gap: 2 }}>
+        <CircularProgress size={40} thickness={4} sx={{ color: 'teal.500' }} />
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, animate: 'pulse' }}>
+          Initializing Neural Interface...
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box>
-      {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
-        <Tooltip title="Back to list">
-          <IconButton onClick={() => navigate('/muster/list')}>
-            <ArrowBack />
-          </IconButton>
-        </Tooltip>
-        <Box>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: '-0.3px' }}>
-            {isEditMode ? 'Edit Muster Register' : 'New Muster Register'}
+    <Box sx={{ pb: 20 }}>
+      {/* 1. Header & Quick View */}
+      <div className="mb-0 flex items-center justify-between">
+        <div>
+          <Typography variant="h4" fontWeight={900} letterSpacing="-1.5px" color="text.primary" sx={{ mb: 1 }}>
+            {sessionId ? 'Edit Muster Register' : 'New Muster Register'}
           </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-            {isEditMode ? 'Modify the attendance register session' : 'Create a new attendance register session'}
+          <Typography variant="body2" color="text.secondary" sx={{ opacity: 0.7, maxWidth: '600px', lineHeight: 1.6 }}>
+            Accurately track student attendance and workstation utilization for this session.
           </Typography>
-        </Box>
-      </Stack>
-
-      {/* Session Details Form */}
-      <div className="rounded-xl border p-6 mb-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Session Details</Typography>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <TextField
-            label="Date"
-            type="date"
-            value={form.date}
-            onChange={(e) => setForm(prev => ({ ...prev, date: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-            required
-          />
-          <TextField
-            label="Time (HH:MM)"
-            type="time"
-            value={form.time}
-            onChange={(e) => handleTimeChange(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-            required
-            helperText="Rounded to nearest 30 min"
-          />
-          <TextField
-            select
-            label="Lab"
-            value={selectedLab}
-            onChange={(e) => handleLabChange(e.target.value)}
-            fullWidth
-            required
-          >
-            <MenuItem value="">Select Lab</MenuItem>
-            {labs.map(lab => (
-              <MenuItem key={lab.id} value={lab.id}>{lab.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Class"
-            value={form.class_name}
-            onChange={(e) => setForm(prev => ({ ...prev, class_name: e.target.value }))}
-            placeholder="e.g., SE Computer"
-            fullWidth
-            required
-          />
-          <TextField
-            label="Batch"
-            value={form.batch}
-            onChange={(e) => setForm(prev => ({ ...prev, batch: e.target.value }))}
-            placeholder="e.g., Batch A"
-            fullWidth
-            required
-          />
         </div>
       </div>
 
-      {/* Entries */}
-      <div className="rounded-xl border overflow-hidden mb-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-color)' }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Student Entries</Typography>
-          <Button variant="outlined" startIcon={<Add />} onClick={handleAddRow} size="small">
-            Add Row
-          </Button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold">
-              <tr>
-                <th className="px-6 py-4 whitespace-nowrap w-20">Sr. No</th>
-                <th className="px-6 py-4 whitespace-nowrap">Roll No</th>
-                <th className="px-6 py-4 whitespace-nowrap">PC</th>
-                <th className="px-6 py-4 whitespace-nowrap text-right w-24">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-color)]">
-              {entries.map((entry, idx) => (
-                <tr key={idx} className="hover:bg-[var(--bg-main)] transition-colors">
-                  <td className="px-6 py-3 text-sm text-[var(--text-primary)] font-medium">{entry.sr_no}</td>
-                  <td className="px-6 py-3">
-                    <TextField
-                      value={entry.roll_no}
-                      onChange={(e) => handleRollNoChange(idx, e.target.value)}
-                      placeholder="Enter roll number"
-                      size="small"
-                      fullWidth
-                    />
-                  </td>
-                  <td className="px-6 py-3">
-                    <TextField
-                      select
-                      value={entry.pc}
-                      onChange={(e) => handlePcChange(idx, e.target.value)}
-                      size="small"
-                      fullWidth
-                      disabled={!selectedLab}
-                    >
-                      <MenuItem value="">Select PC</MenuItem>
-                      {pcs.map(pc => (
-                        <MenuItem key={pc.id} value={pc.id}>{pc.device_name}</MenuItem>
-                      ))}
-                    </TextField>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <Tooltip title="Remove row">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleRemoveRow(idx)}
-                        disabled={entries.length <= 1}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* 2. Stats & Details Card */}
+      <div className="mt-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <SessionDetailsCard 
+          formData={sessionFormData}
+          labs={labs}
+          currentUser={currentUser}
+          onFieldChange={handleSessionFieldChange}
+          onTimeChange={handleTimeChange}
+        />
+        
+        <QuickStatsBar 
+          date={sessionFormData.date}
+          labName={labs.find(l => l.id === sessionFormData.lab)?.name || ''}
+          total={stats.total}
+          present={stats.present}
+          absent={stats.absent}
+        />
       </div>
 
-      {/* Save / Reset */}
-      <Stack direction="row" spacing={2} justifyContent="flex-end">
-        <Button
-          variant="outlined"
-          onClick={() => {
-            if (isEditMode && sessionId) {
-              navigate('/muster/list');
-            } else {
-              setForm({ date: new Date().toISOString().split('T')[0] as string, time: '', class_name: '', batch: '' });
-              setSelectedLab('');
-              setEntries([{ sr_no: 1, roll_no: '', pc: '' }]);
-              setIsEditMode(false);
-              setSuccess('');
-              setError('');
-            }
-          }}
-        >
-          {isEditMode ? 'Cancel' : 'Reset'}
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <Save />}
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {isEditMode ? 'Update Register' : 'Save Register'}
-        </Button>
-      </Stack>
+      {/* 3. Main Data Entry Core */}
+      <StudentEntriesTable 
+        entries={entries}
+        pcs={pcs}
+        editingIndices={editingIndices}
+        selectedIndices={selectedIndices}
+        onAddRow={handleAddRow}
+        onRemoveRow={handleRemoveRow}
+        onToggleEdit={handleToggleEdit}
+        onToggleSelect={handleToggleSelect}
+        onSelectAll={handleSelectAll}
+        onEntryChange={handleEntryChange}
+        onImportClick={() => setError('Module Interface Down: CSV Import coming soon.')}
+      />
 
-      {/* Alerts */}
-      <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
-        <Alert severity="error" onClose={() => setError('')} variant="filled">{error}</Alert>
+      {/* 4. Overlays & Sticky Modules */}
+      <BulkActionsBar 
+        selectedCount={selectedIndices.size}
+        onClear={() => setSelectedIndices(new Set())}
+        onMarkPresent={() => handleBulkMarkAttendance('P')}
+        onMarkAbsent={() => handleBulkMarkAttendance('A')}
+        onDelete={handleBulkDelete}
+      />
+
+      <MusterBottomBar 
+        onBack={() => navigate('/muster/list')}
+        onReset={handleReset}
+        onPreview={() => setIsPreviewOpen(true)}
+        onSave={handleSave}
+        isSaving={saving}
+        hasUnsavedChanges={hasUnsavedChanges}
+        isValid={sessionFormData.lab !== '' && entries.length > 0}
+      />
+
+      {/* 5. Modals */}
+      <MusterPreviewModal 
+        open={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        sessionData={{
+          date: sessionFormData.date,
+          time: sessionFormData.time,
+          labName: labs.find(l => l.id === sessionFormData.lab)?.name || 'Not Selected',
+          className: sessionFormData.className,
+          batch: sessionFormData.batch,
+          sessionType: sessionFormData.sessionType,
+          duration: sessionFormData.duration,
+          subject: sessionFormData.subject,
+        }}
+        entries={entries.map(e => ({
+          ...e,
+          pc_name: pcs.find(p => p.id === e.pc)?.device_name || 'None'
+        }))}
+      />
+
+      {/* Reset Confirmation */}
+      <Dialog 
+        open={showResetConfirm} 
+        onClose={() => setShowResetConfirm(false)}
+        PaperProps={{ sx: { borderRadius: '1rem', bgcolor: 'var(--card-bg)', backgroundImage: 'none' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pt: 3 }}>
+          <AlertTriangle className="text-amber-500" />
+          <Typography variant="h6" fontWeight={700}>System Purge Requested</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            You are about to reset all form fields and clear student entries. This operation is irreversible. Proceed with clearing current state?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setShowResetConfirm(false)} variant="outlined" sx={{ borderRadius: '0.5rem' }}>Cancel</Button>
+          <Button onClick={resetForm} variant="contained" color="error" sx={{ borderRadius: '0.5rem' }}>Purge State</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Toast Feedback */}
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
+        <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: '0.75rem' }}>
+          {error}
+        </Alert>
       </Snackbar>
-      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
-        <Alert severity="success" onClose={() => setSuccess('')} variant="filled">{success}</Alert>
+      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess(null)}>
+        <Alert severity="success" variant="filled" icon={<CheckCircle2 size={18} />} onClose={() => setSuccess(null)} sx={{ borderRadius: '0.75rem' }}>
+          {success}
+        </Alert>
       </Snackbar>
     </Box>
   );

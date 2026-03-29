@@ -1,0 +1,15 @@
+src/pages/Equipment.tsx(143,7): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/Equipment.tsx(148,7): error TS2322: Type 'string' is not assignable to type '"" | "working" | "not_working" | "under_repair"'.
+src/pages/Labs.tsx(108,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/Maintenance.tsx(272,11): error TS2322: Type 'string | undefined' is not assignable to type '"pending" | "fixed"'.
+  Type 'undefined' is not assignable to type '"pending" | "fixed"'.
+src/pages/Maintenance.tsx(275,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/Maintenance.tsx(301,11): error TS2322: Type 'string | undefined' is not assignable to type '"pending" | "fixed"'.
+  Type 'undefined' is not assignable to type '"pending" | "fixed"'.
+src/pages/Maintenance.tsx(304,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/Maintenance.tsx(729,75): error TS2352: Conversion of type 'string' to type 'number' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/pages/PCs.tsx(174,7): error TS2322: Type 'string' is not assignable to type '"working" | "not_working" | "under_repair"'.

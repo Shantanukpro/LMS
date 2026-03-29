@@ -25,15 +25,29 @@ import { Add, ArrowBack, Delete, Edit, Refresh } from '@mui/icons-material';
 import { labsAPI, pcsAPI } from '../services/api';
 import type { Lab, PC } from '../types';
 
-const emptyPC = { device_name: '', status: 'working', brand: '', serial_number: '', processor: '', ram: '', storage: '' };
+const emptyPC = { 
+  device_name: '', 
+  product_id: '',
+  status: 'working', 
+  brand: '', 
+  serial_number: '', 
+  processor: '', 
+  ram: '', 
+  storage: '',
+  graphics_card: '',
+  connected: true,
+  gpu: false,
+  cpu_model: '',
+  cpu_clock_speed: '',
+  cpu_core_count: '' as number | '',
+  cpu_integrated_graphics: false,
+  keyboard_status: 'working',
+  mouse_status: 'working'
+};
 
 type PCForm = typeof emptyPC;
 
-const getPeripheral = (pc: PC, type: string) => {
-  const p = pc.peripheral_devices?.find(d => d.peripheral_type === type);
-  if (!p) return '-';
-  return p.status === 'working' ? '✅ Working' : '❌ Not Working';
-};
+import LabPCTable from '../components/Labs/LabPCTable';
 
 const getStatusBadge = (status: string) => {
   const s = status?.toLowerCase() || '';
@@ -95,68 +109,96 @@ const LabDetail: React.FC = () => {
   };
 
   const handleOpenEdit = (pc: PC) => {
+    const keyboard = pc.peripherals_list?.find(p => p.type.toLowerCase() === 'keyboard')
+                     || pc.peripheral_devices?.find(p => p.peripheral_type?.toLowerCase() === 'keyboard');
+    const mouse = pc.peripherals_list?.find(p => p.type.toLowerCase() === 'mouse')
+                  || pc.peripheral_devices?.find(p => p.peripheral_type?.toLowerCase() === 'mouse');
+
     setEditingId(pc.id);
     setFormData({
       device_name: pc.device_name || '',
-      status: pc.status,
+      product_id: pc.product_id || '',
+      status: pc.status as any || 'working',
       brand: pc.brand || '',
       serial_number: pc.serial_number || '',
       processor: pc.processor || '',
       ram: pc.ram || '',
       storage: pc.storage || '',
+      graphics_card: pc.graphics_card || '',
+      connected: pc.connected ?? true,
+      gpu: pc.gpu ?? false,
+      cpu_model: pc.cpu?.model || '',
+      cpu_clock_speed: pc.cpu?.clock_speed || '',
+      cpu_core_count: pc.cpu?.core_count || '',
+      cpu_integrated_graphics: pc.cpu?.integrated_graphics || false,
+      keyboard_status: (keyboard?.status as any) || 'working',
+      mouse_status: (mouse?.status as any) || 'working',
     });
     setOpenForm(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.device_name.trim()) {
-      setError('PC name is required');
+    if (!formData.device_name.trim() || !formData.product_id.trim()) {
+      setError('PC name and Product ID are required');
       return;
     }
+    const payload = {
+      device_name: formData.device_name.trim(),
+      product_id: formData.product_id.trim(),
+      status: formData.status as any,
+      connected: formData.connected,
+      brand: formData.brand?.trim() || undefined,
+      serial_number: formData.serial_number?.trim() || undefined,
+      processor: formData.processor?.trim() || undefined,
+      ram: formData.ram?.trim() || undefined,
+      storage: formData.storage?.trim() || undefined,
+      graphics_card: formData.graphics_card?.trim() || undefined,
+      gpu: formData.gpu,
+      cpu: {
+        model: formData.cpu_model.trim() || undefined,
+        clock_speed: formData.cpu_clock_speed.trim() || undefined,
+        core_count: formData.cpu_core_count || undefined,
+        integrated_graphics: formData.cpu_integrated_graphics
+      },
+      peripheral_devices: [
+        { peripheral_type: 'keyboard', status: formData.keyboard_status },
+        { peripheral_type: 'mouse', status: formData.mouse_status }
+      ]
+    };
+
     try {
       setSaving(true);
       if (editingId) {
-        const updated = await pcsAPI.update(editingId, {
-          device_name: formData.device_name.trim(),
-          status: formData.status as any,
-          brand: formData.brand?.trim() || undefined,
-          serial_number: formData.serial_number?.trim() || undefined,
-          processor: formData.processor?.trim() || undefined,
-          ram: formData.ram?.trim() || undefined,
-          storage: formData.storage?.trim() || undefined,
-        });
+        const updated = await pcsAPI.update(editingId, payload as any);
         setPcs((prev) => prev.map((p) => (p.id === editingId ? updated : p)));
         setSuccess('PC updated successfully');
       } else {
-        const created = await pcsAPI.create(labId, {
-          device_name: formData.device_name.trim(),
-          status: formData.status as any,
-          brand: formData.brand?.trim() || undefined,
-          serial_number: formData.serial_number?.trim() || undefined,
-          processor: formData.processor?.trim() || undefined,
-          ram: formData.ram?.trim() || undefined,
-          storage: formData.storage?.trim() || undefined,
-        });
+        const created = await pcsAPI.create(labId, payload as any);
         setPcs((prev) => [created, ...prev]);
         setSuccess('PC created successfully');
       }
       setOpenForm(false);
-    } catch (e: any) {
-      const data = e?.response?.data;
+    } catch (err: any) {
+      console.error('Failed to save PC:', err);
+      const data = err?.response?.data;
       if (data) {
         if (typeof data === 'string') {
-           setError(data);
+          setError(data.length > 100 ? 'Save failed: Server Error' : data);
+        } else if (typeof data === 'object') {
+          // Extract specific field errors
+          const errorMsgs = Object.entries(data)
+            .map(([field, errors]) => {
+              const msg = Array.isArray(errors) ? errors[0] : errors;
+              return `${field}: ${msg}`;
+            })
+            .join(', ');
+          setError(errorMsgs || 'Save failed: Invalid data');
         } else {
-           const msgs: string[] = [];
-           Object.entries(data).forEach(([k, v]) => {
-             if (Array.isArray(v)) msgs.push(`${k}: ${v.join(' ')}`);
-             else if (typeof v === 'string') msgs.push(`${k}: ${v}`);
-           });
-           setError(msgs.join('\n') || 'Save failed');
+          setError('Save failed');
         }
       } else {
-        setError('Save failed');
+        setError(err.message || 'Save failed');
       }
     } finally {
       setSaving(false);
@@ -220,72 +262,11 @@ const LabDetail: React.FC = () => {
             </Stack>
           </Box>
 
-          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
-            <div className="overflow-x-auto">
-              {rows.length === 0 ? (
-                <div className="p-8 text-center text-[var(--text-secondary)]">
-                  <Typography variant="body1">No PCs found. Click "Add PC" to create one.</Typography>
-                </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
-                    <tr>
-                      <th className="px-6 py-4 whitespace-nowrap">PC Name (COMP ID)</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Brand</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Processor</th>
-                      <th className="px-6 py-4 whitespace-nowrap">RAM</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Storage</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Graphics Card</th>
-                      <th className="px-6 py-4 whitespace-nowrap">CPU</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Keyboard</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Mouse</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Status</th>
-                      <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border-color)]">
-                    {rows.map((pc) => (
-                      <tr 
-                        key={pc.id} 
-                        className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
-                      >
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-primary)] font-medium">{pc.device_name || '-'}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.brand || '-'}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.processor || '-'}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.ram || '-'}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.storage || '-'}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.gpu ? 'Yes' : 'No'}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{pc.cpu?.model || '-'}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{getPeripheral(pc, 'keyboard')}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">{getPeripheral(pc, 'mouse')}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(pc.status)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                          <Stack direction="row" spacing={1} justifyContent="flex-end">
-                            <Tooltip title="Edit">
-                              <button
-                                onClick={() => handleOpenEdit(pc)}
-                                className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                              >
-                                <Edit fontSize="small" />
-                              </button>
-                            </Tooltip>
-                            <Tooltip title="Delete">
-                              <button
-                                onClick={() => confirmDelete(pc.id)}
-                                className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                              >
-                                <Delete fontSize="small" />
-                              </button>
-                            </Tooltip>
-                          </Stack>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
+          <LabPCTable 
+            pcs={pcs} 
+            onEdit={handleOpenEdit} 
+            onDelete={confirmDelete} 
+          />
         </>
       )}
 
@@ -294,48 +275,179 @@ const LabDetail: React.FC = () => {
         <DialogTitle>{editingId ? 'Edit PC' : 'Add PC'}</DialogTitle>
         <Box component="form" onSubmit={handleSave}>
           <DialogContent>
-            <Stack spacing={2}>
-              <TextField
-                label="PC Name (COMP ID)"
-                value={formData.device_name}
-                onChange={(e) => setFormData({ ...formData, device_name: e.target.value })}
-                required
-                autoFocus
-              />
-              <TextField
-                label="Brand"
-                value={formData.brand}
-                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              />
-              <TextField
-                label="Serial Number"
-                value={formData.serial_number}
-                onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
-              />
-              <TextField
-                label="Processor"
-                value={formData.processor}
-                onChange={(e) => setFormData({ ...formData, processor: e.target.value })}
-              />
-              <TextField
-                label="RAM"
-                value={formData.ram}
-                onChange={(e) => setFormData({ ...formData, ram: e.target.value })}
-              />
-              <TextField
-                label="Storage"
-                value={formData.storage}
-                onChange={(e) => setFormData({ ...formData, storage: e.target.value })}
-              />
-              <TextField
-                label="Status"
-                select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              >
-                <MenuItem value="working">Working</MenuItem>
-                <MenuItem value="not_working">Not Working</MenuItem>
-              </TextField>
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="overline" color="primary" sx={{ fontWeight: 'bold' }}>Basic Information</Typography>
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    label="PC Name (COMP ID)"
+                    value={formData.device_name}
+                    onChange={(e) => setFormData({ ...formData, device_name: e.target.value })}
+                    required
+                    fullWidth
+                    autoFocus
+                  />
+                  <TextField
+                    label="Product ID / PC Code"
+                    value={formData.product_id}
+                    onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
+                    required
+                    fullWidth
+                  />
+                  <TextField
+                    label="Brand"
+                    value={formData.brand}
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                    fullWidth
+                  />
+                </Stack>
+                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                  <TextField
+                    label="Status"
+                    select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    fullWidth
+                  >
+                    <MenuItem value="working">Working</MenuItem>
+                    <MenuItem value="not_working">Not Working</MenuItem>
+                  </TextField>
+                  <TextField
+                    label="Network"
+                    select
+                    value={formData.connected ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, connected: e.target.value === 'true' })}
+                    fullWidth
+                  >
+                    <MenuItem value="true">Connected</MenuItem>
+                    <MenuItem value="false">Disconnected</MenuItem>
+                  </TextField>
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 'bold' }}>Hardware Overview (Legacy / Basic)</Typography>
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    label="Basic Processor Info"
+                    value={formData.processor}
+                    onChange={(e) => setFormData({ ...formData, processor: e.target.value })}
+                    fullWidth
+                    placeholder="e.g. Intel Core i7"
+                  />
+                  <TextField
+                    label="RAM Capacity"
+                    value={formData.ram}
+                    onChange={(e) => setFormData({ ...formData, ram: e.target.value })}
+                    fullWidth
+                    placeholder="e.g. 16GB DDR4"
+                  />
+                </Stack>
+                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                  <TextField
+                    label="Graphics Card (Dedicated)"
+                    select
+                    value={formData.gpu ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, gpu: e.target.value === 'true' })}
+                    fullWidth
+                  >
+                    <MenuItem value="true">Yes (Has GPU)</MenuItem>
+                    <MenuItem value="false">No Dedicated GPU</MenuItem>
+                  </TextField>
+                  {formData.gpu && (
+                    <TextField
+                      label="GPU Model / Name"
+                      value={formData.graphics_card}
+                      onChange={(e) => setFormData({ ...formData, graphics_card: e.target.value })}
+                      fullWidth
+                    />
+                  )}
+                  <TextField
+                    label="Storage Capacity"
+                    value={formData.storage}
+                    onChange={(e) => setFormData({ ...formData, storage: e.target.value })}
+                    fullWidth
+                    placeholder="e.g. 512GB SSD"
+                  />
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="secondary" sx={{ fontWeight: 'bold' }}>CPU Specifications (Deep Details)</Typography>
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    label="CPU Model"
+                    value={formData.cpu_model}
+                    onChange={(e) => setFormData({ ...formData, cpu_model: e.target.value })}
+                    fullWidth
+                    placeholder="e.g. Intel Core i7-12700"
+                  />
+                  <TextField
+                    label="Clock Speed"
+                    value={formData.cpu_clock_speed}
+                    onChange={(e) => setFormData({ ...formData, cpu_clock_speed: e.target.value })}
+                    fullWidth
+                    placeholder="e.g. 3.6 GHz"
+                  />
+                </Stack>
+                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                  <TextField
+                    label="Core Count"
+                    type="number"
+                    value={formData.cpu_core_count}
+                    onChange={(e) => setFormData({ ...formData, cpu_core_count: e.target.value === '' ? '' : Number(e.target.value) })}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Integrated Graphics"
+                    select
+                    value={formData.cpu_integrated_graphics ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, cpu_integrated_graphics: e.target.value === 'true' })}
+                    fullWidth
+                  >
+                    <MenuItem value="true">Yes (Integrated)</MenuItem>
+                    <MenuItem value="false">No (Dedicated Only)</MenuItem>
+                  </TextField>
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 'bold' }}>Peripherals Status</Typography>
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    label="Keyboard Status"
+                    select
+                    value={formData.keyboard_status}
+                    onChange={(e) => setFormData({ ...formData, keyboard_status: e.target.value as any })}
+                    fullWidth
+                  >
+                    <MenuItem value="working">Working</MenuItem>
+                    <MenuItem value="not_working">Broken</MenuItem>
+                  </TextField>
+                  <TextField
+                    label="Mouse Status"
+                    select
+                    value={formData.mouse_status}
+                    onChange={(e) => setFormData({ ...formData, mouse_status: e.target.value as any })}
+                    fullWidth
+                  >
+                    <MenuItem value="working">Working</MenuItem>
+                    <MenuItem value="not_working">Broken</MenuItem>
+                  </TextField>
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 'bold' }}>Physical Inventory Labels</Typography>
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    label="Serial Number"
+                    value={formData.serial_number}
+                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
+                    fullWidth
+                  />
+                </Stack>
+              </Box>
             </Stack>
           </DialogContent>
           <DialogActions>

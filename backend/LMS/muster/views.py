@@ -12,10 +12,32 @@ from labs.models import Lab, PC
 
 # -------------------- DRF API ENDPOINTS --------------------
 
+from rest_framework.decorators import action
+
 class MusterSessionViewSet(viewsets.ModelViewSet):
-    queryset = MusterSession.objects.all()
+    queryset = MusterSession.objects.all().order_by('-date', '-time')
     serializer_class = MusterSessionSerializer
     permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['post'])
+    def entries(self, request, pk=None):
+        session = self.get_object()
+        entries_data = request.data.get('entries', [])
+        
+        # Clear existing entries if re-saving
+        session.entries.all().delete()
+        
+        created_entries = []
+        for entry in entries_data:
+            new_entry = MusterEntry.objects.create(
+                session=session,
+                sr_no=entry.get('sr_no'),
+                roll_no=entry.get('roll_no'),
+                pc_id=entry.get('pc')
+            )
+            created_entries.append(new_entry)
+            
+        return Response({'status': 'Entries synchronized', 'count': len(created_entries)})
 
 
 class PCsForLab(APIView):

@@ -10,6 +10,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   devSignIn: () => void;
+  updateUser: (user: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,24 +41,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const stored = JSON.parse(raw) as Partial<User>;
           if (stored && stored.role) {
             setUser({
-              id: stored.id ?? 0,
+              id: stored.id || 0,
               username: stored.username ?? '',
               email: stored.email ?? '',
               role: stored.role as User['role'],
+              profile_picture: stored.profile_picture ?? null,
             });
           } else if (token.startsWith('dev_')) {
-            setUser({ id: 1, username: 'devuser', email: 'dev@example.com', role: 'admin' });
+            setUser({ id: 1, username: 'devuser', email: 'dev@example.com', role: 'admin', profile_picture: null });
           } else {
             // Fallback: treat as authenticated with minimal info to avoid redirect loop
-            setUser({ id: 0, username: '', email: '', role: 'student' });
+            setUser({ id: 0, username: '', email: '', role: 'student', profile_picture: null });
           }
         } else if (token.startsWith('dev_')) {
-          setUser({ id: 1, username: 'devuser', email: 'dev@example.com', role: 'admin' });
+          setUser({ id: 1, username: 'devuser', email: 'dev@example.com', role: 'admin', profile_picture: null });
         } else {
-          setUser({ id: 0, username: '', email: '', role: 'student' });
+          setUser({ id: 0, username: '', email: '', role: 'student', profile_picture: null });
         }
       } catch {
-        setUser({ id: 0, username: '', email: '', role: 'student' });
+        setUser({ id: 0, username: '', email: '', role: 'student', profile_picture: null });
       }
     }
     setLoading(false);
@@ -70,10 +72,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Set user from backend response (username, role)
       const loggedInUser: User = {
-        id: 0, // backend login doesn't return id; optional enhancement: provide /me endpoint
+        id: response.id || 0,
         username: response.username || credentials.username,
         email: '',
         role: (response.role as User['role']) || 'student',
+        profile_picture: null,
       };
       setUser(loggedInUser);
       // Persist minimal user info for refresh survival
@@ -99,6 +102,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('user_info');
   };
 
+  const updateUser = (updatedUser: Partial<User>) => {
+    setUser((prev) => {
+      const newUser = prev ? { ...prev, ...updatedUser } : (updatedUser as User);
+      localStorage.setItem('user_info', JSON.stringify(newUser));
+      return newUser;
+    });
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -106,6 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!user,
+    updateUser,
     devSignIn: () => {
       // Temporary mock sign-in for frontend development without backend
       setTokens('dev_access_token', 'dev_refresh_token');
@@ -114,6 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         username: 'devuser',
         email: 'dev@example.com',
         role: 'admin',
+        profile_picture: null,
       };
       setUser(mockUser);
       localStorage.setItem('user_info', JSON.stringify(mockUser));

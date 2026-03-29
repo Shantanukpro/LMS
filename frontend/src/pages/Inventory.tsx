@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, Card, CardContent, Stack, Chip, CircularProgress, Alert } from '@mui/material';
-// import { inventoryAPI } from '../services/api';
-import type { Inventory as InventoryRow } from '../types';
+import { 
+  Box, Typography, Stack, Chip, CircularProgress, 
+  Alert, Paper, Container 
+} from '@mui/material';
+import { 
+  Package, CheckCircle2, AlertTriangle, 
+  Settings, LayoutList, ChevronRight 
+} from 'lucide-react';
+import { inventoryAPI, labsAPI } from '../services/api';
+import type { Inventory as InventoryRow, Lab } from '../types';
 
 type Agg = {
   total: number;
@@ -10,30 +17,71 @@ type Agg = {
   under_repair: number;
 };
 
+const StatCard: React.FC<{ label: string; value: number; color: string; icon: React.ReactNode }> = ({ label, value, color, icon }) => (
+  <Paper 
+    elevation={0}
+    sx={{ 
+      p: 2.5, 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: 2.5,
+      backgroundColor: 'var(--bg-glass)',
+      border: '1px solid var(--border-panel)',
+      borderRadius: '16px',
+      flex: 1,
+      minWidth: '200px',
+      boxShadow: theme => theme.palette.mode === 'dark' 
+        ? '0 4px 20px rgba(0,0,0,0.2)' 
+        : '0 4px 12px rgba(0,0,0,0.03)'
+    }}
+  >
+    <Box sx={{ 
+      p: 1.5, 
+      borderRadius: '12px', 
+      backgroundColor: `${color}15`, 
+      color: color,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      {icon}
+    </Box>
+    <Box>
+      <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '11px' }}>
+        {label}
+      </Typography>
+      <Typography variant="h5" sx={{ color: 'var(--text-primary)', lineHeight: 1, fontWeight: 800, mt: 0.5 }}>
+        {value}
+      </Typography>
+    </Box>
+  </Paper>
+);
+
 const Inventory: React.FC = () => {
   const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [labs, setLabs] = useState<Lab[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError('');
-
-      // const data = await inventoryAPI.getAll();
-      // Extract results from paginated response
-      // const inventoryArray = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
-      const inventoryArray: InventoryRow[] = []; // Temporary empty data
-      setRows(inventoryArray);
+      const [invData, labsData] = await Promise.all([
+        inventoryAPI.getAll(),
+        labsAPI.getAll()
+      ]);
+      setRows(Array.isArray(invData) ? invData : []);
+      setLabs(labsData);
     } catch (e: any) {
       console.error('Failed to load inventory:', e);
-      setError(e?.response?.data?.detail || 'Failed to load inventory. Please check your connection and try again.');
+      setError('Failed to sync inventory data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { loadData(); }, []);
 
   const totals: Agg = useMemo(() => {
     return rows.reduce((acc, r) => ({
@@ -71,135 +119,151 @@ const Inventory: React.FC = () => {
   }, [rows]);
 
   const typeKeys = Object.keys(byType);
-  const maxTypeTotal = Math.max(1, ...typeKeys.map((k) => (byType[k] ? byType[k]!.total : 0)));
+  const maxTypeTotal = Math.max(1, ...typeKeys.map((k) => (byType[k]?.total || 0)));
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Inventory Overview
-      </Typography>
+    <Container maxWidth="xl" sx={{ pb: 6 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          Inventory Overview
+        </Typography>
+        <Typography sx={{ color: 'var(--text-secondary)', mt: 0.5 }}>
+          Real-time tracking of lab hardware and assets across all departments
+        </Typography>
+      </Box>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 12 }}>
+          <CircularProgress color="primary" />
         </Box>
       ) : error ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" variant="filled" sx={{ mb: 4, borderRadius: '12px' }}>
           {error}
         </Alert>
       ) : (
-        <>
+        <Stack spacing={4}>
           {/* KPI Cards */}
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2 }}>
-            <Card sx={{ flex: 1 }}><CardContent>
-              <Typography variant="overline">Total Equipment</Typography>
-              <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{totals.total}</Typography>
-            </CardContent></Card>
-            <Card sx={{ flex: 1 }}><CardContent>
-              <Typography variant="overline">Working</Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>{totals.working}</Typography>
-                <Chip size="small" label={`${Math.round((totals.working/(totals.total||1))*100)}%`} color="success" />
-              </Stack>
-            </CardContent></Card>
-            <Card sx={{ flex: 1 }}><CardContent>
-              <Typography variant="overline">Not Working</Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'error.main' }}>{totals.not_working}</Typography>
-                <Chip size="small" label={`${Math.round((totals.not_working/(totals.total||1))*100)}%`} color="error" />
-              </Stack>
-            </CardContent></Card>
-            <Card sx={{ flex: 1 }}><CardContent>
-              <Typography variant="overline">Under Repair</Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'warning.main' }}>{totals.under_repair}</Typography>
-                <Chip size="small" label={`${Math.round((totals.under_repair/(totals.total||1))*100)}%`} color="warning" />
-              </Stack>
-            </CardContent></Card>
-          </Stack>
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr 1fr' }, 
+            gap: 3 
+          }}>
+            <StatCard label="Total Equipment" value={totals.total} color="#64748b" icon={<Package size={22} />} />
+            <StatCard label="Working Assets" value={totals.working} color="#10b981" icon={<CheckCircle2 size={22} />} />
+            <StatCard label="Defective" value={totals.not_working} color="#ef4444" icon={<AlertTriangle size={22} />} />
+            <StatCard label="Under Maintenance" value={totals.under_repair} color="#f59e0b" icon={<Settings size={22} />} />
+          </Box>
 
-          {/* Simple SVG Bar Chart by Equipment Type */}
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>By Equipment Type</Typography>
+          {/* Visual Data & Per-Lab Breakdown */}
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', xl: '1.2fr 1fr' }, 
+            gap: 4 
+          }}>
+            {/* Table Section */}
+            <Box sx={{ 
+              p: 0, 
+              backgroundColor: 'var(--bg-glass)', 
+              border: '1px solid var(--border-panel)', 
+              borderRadius: '20px',
+              boxShadow: theme => theme.palette.mode === 'dark' 
+                ? '0 8px 32px rgba(0,0,0,0.4)'
+                : '0 8px 32px rgba(0,0,0,0.05)',
+              overflow: 'hidden'
+            }}>
+              <Box sx={{ p: 3, borderBottom: '1px solid var(--border-panel)', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <LayoutList size={20} color="#3b82f6" />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>Lab Inventory Breakdown</Typography>
+              </Box>
+
+              <Box sx={{ overflowX: 'auto' }}>
+                <table className="w-full text-left border-separate border-spacing-0">
+                  <thead className="bg-[var(--bg-main)]/50">
+                    <tr>
+                      <th className="px-6 py-4 border-b border-[var(--border-panel)]">
+                        <Typography variant="overline" sx={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.1em' }}>Lab</Typography>
+                      </th>
+                      <th className="px-6 py-4 border-b border-[var(--border-panel)] text-center">
+                        <Typography variant="overline" sx={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.1em' }}>Total</Typography>
+                      </th>
+                      <th className="px-6 py-4 border-b border-[var(--border-panel)] text-center">
+                        <Typography variant="overline" sx={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.1em' }}>Working</Typography>
+                      </th>
+                      <th className="px-6 py-4 border-b border-[var(--border-panel)] text-center">
+                        <Typography variant="overline" sx={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.1em' }}>Defective</Typography>
+                      </th>
+                      <th className="px-6 py-4 border-b border-[var(--border-panel)] text-center">
+                        <Typography variant="overline" sx={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.1em' }}>Repair</Typography>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-panel)]">
+                    {Object.entries(byLab).map(([labId, agg]) => {
+                      const labName = labs.find(l => l.id === Number(labId))?.name || `Lab ${labId}`;
+                      return (
+                        <tr key={labId} className="hover:bg-[var(--bg-hover)] transition-colors group">
+                          <td className="px-6 py-5">
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Box sx={{ width: 4, height: 24, borderRadius: 2, bgcolor: '#3b82f6', opacity: 0.3 }} />
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>{labName}</Typography>
+                            </Box>
+                          </td>
+                          <td className="px-6 py-5 text-center">
+                            <Chip label={agg.total} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(148,163,184,0.1)', color: 'var(--text-secondary)' }} />
+                          </td>
+                          <td className="px-6 py-5 text-center text-emerald-600 dark:text-emerald-400 font-bold">{agg.working}</td>
+                          <td className="px-6 py-5 text-center text-rose-500 font-bold">{agg.not_working}</td>
+                          <td className="px-6 py-5 text-center text-amber-500 font-bold">{agg.under_repair}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </Box>
+            </Box>
+
+            {/* Chart Section */}
+            <Box sx={{ 
+              p: 3, 
+              backgroundColor: 'var(--bg-glass)', 
+              border: '1px solid var(--border-panel)', 
+              borderRadius: '20px',
+              boxShadow: theme => theme.palette.mode === 'dark' 
+                ? '0 8px 32px rgba(0,0,0,0.4)'
+                : '0 8px 32px rgba(0,0,0,0.05)',
+            }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>Availability by Hardware</Typography>
               {typeKeys.length === 0 ? (
-                <Typography color="text.secondary">No data</Typography>
+                <Box sx={{ py: 8, textAlign: 'center' }}>
+                  <Typography sx={{ color: 'var(--text-secondary)' }}>No equipment data recorded.</Typography>
+                </Box>
               ) : (
                 <Box sx={{ overflowX: 'auto' }}>
-                  <Box component="svg" width={Math.max(600, typeKeys.length * 140)} height={280}>
+                  <Box component="svg" width="100%" height={320} viewBox={`0 0 ${Math.max(400, typeKeys.length * 100)} 300`}>
                     {typeKeys.map((k, idx) => {
                       const agg = byType[k]!;
-                      const x = 60 + idx * 120;
+                      const x = 50 + idx * 90;
                       const scale = (v: number) => (v / maxTypeTotal) * 160;
+                      
                       return (
                         <g key={k}>
-                          {/* Bars */}
-                          <rect x={x} y={60 + (160 - scale(agg.working))} width={24} height={scale(agg.working)} fill="#16a34a" rx={4} />
-                          <rect x={x + 30} y={60 + (160 - scale(agg.not_working))} width={24} height={scale(agg.not_working)} fill="#dc2626" rx={4} />
-                          <rect x={x + 60} y={60 + (160 - scale(agg.under_repair))} width={24} height={scale(agg.under_repair)} fill="#f59e0b" rx={4} />
-                          {/* Labels */}
-                          <text x={x + 30} y={240} textAnchor="middle" fontSize="12">{k}</text>
-                          <text x={x + 12} y={50} textAnchor="middle" fontSize="11" fill="#16a34a">W:{agg.working}</text>
-                          <text x={x + 42} y={50} textAnchor="middle" fontSize="11" fill="#dc2626">NW:{agg.not_working}</text>
-                          <text x={x + 72} y={50} textAnchor="middle" fontSize="11" fill="#f59e0b">UR:{agg.under_repair}</text>
+                          <rect x={x} y={220 - scale(agg.working)} width={12} height={scale(agg.working)} fill="#10b981" rx={2} />
+                          <rect x={x + 15} y={220 - scale(agg.not_working)} width={12} height={scale(agg.not_working)} fill="#ef4444" rx={2} />
+                          <rect x={x + 30} y={220 - scale(agg.under_repair)} width={12} height={scale(agg.under_repair)} fill="#f59e0b" rx={2} />
+                          <text x={x + 15} y={250} textAnchor="middle" fontSize="10" fill="var(--text-secondary)" fontWeight="600" transform={`rotate(15, ${x+15}, 250)`}>{k}</text>
                         </g>
                       );
                     })}
-                    {/* Legend */}
-                    <g>
-                      <rect x={10} y={10} width={12} height={12} fill="#16a34a" />
-                      <text x={28} y={20} fontSize="12">Working</text>
-                      <rect x={90} y={10} width={12} height={12} fill="#dc2626" />
-                      <text x={108} y={20} fontSize="12">Not Working</text>
-                      <rect x={200} y={10} width={12} height={12} fill="#f59e0b" />
-                      <text x={218} y={20} fontSize="12">Under Repair</text>
-                    </g>
+                    <line x1="40" y1="220" x2="100%" y2="220" stroke="var(--border-panel)" strokeWidth="1" />
+                    <text x={20} y={40} fontSize="10" fill="var(--text-secondary)">Qty</text>
                   </Box>
                 </Box>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Per-Lab Table */}
-          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
-            <div className="px-6 py-4 border-b border-[var(--border-color)]">
-              <Typography variant="h6" className="text-[var(--text-primary)]">By Lab</Typography>
-            </div>
-            <div className="overflow-x-auto">
-              {Object.keys(byLab).length === 0 ? (
-                <div className="p-8 text-center text-[var(--text-secondary)]">No data</div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
-                    <tr>
-                      <th className="px-6 py-4 whitespace-nowrap">Lab</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Total</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Working</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Not Working</th>
-                      <th className="px-6 py-4 whitespace-nowrap">Under Repair</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border-color)]">
-                    {Object.entries(byLab).map(([lab, agg]) => (
-                      <tr 
-                        key={lab} 
-                        className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
-                      >
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-primary)] font-medium">Lab {lab}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-primary)] font-medium">{agg.total}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-emerald-600 dark:text-emerald-400 font-medium">{agg.working}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-rose-600 dark:text-rose-400 font-medium">{agg.not_working}</td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap text-amber-600 dark:text-amber-400 font-medium">{agg.under_repair}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </>
+            </Box>
+          </Box>
+        </Stack>
       )}
-    </Box>
+    </Container>
   );
 };
 

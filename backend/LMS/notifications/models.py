@@ -17,6 +17,13 @@ class Notification(models.Model):
         'labs.MaintenanceLog',
         on_delete=models.CASCADE,
         related_name='notifications',
+        null=True, blank=True
+    )
+    ticket = models.ForeignKey(
+        'tickets.Ticket',
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        null=True, blank=True
     )
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='info')
     message = models.TextField()

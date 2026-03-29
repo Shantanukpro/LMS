@@ -18,10 +18,18 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
 import { softwareAPI, labsAPI, pcsAPI } from '../services/api';
 import type { Software as SoftwareType, Lab, PC } from '../types';
+import LicenseDashboard from '../components/Software/LicenseDashboard';
+import ModernTable from '../components/Common/ModernTable';
+import ModernTableRow from '../components/Common/ModernTableRow';
+import EquipmentCard from '../components/Labs/EquipmentCard';
+import BooleanBadge from '../components/Labs/BooleanBadge';
+import { Layers, Key, Calendar, Monitor } from 'lucide-react';
 
 type SoftwareForm = {
   pc: number | '';
@@ -54,6 +62,7 @@ const Software: React.FC = () => {
   const [q, setQ] = useState('');
   const [fLab, setFLab] = useState<number | ''>('');
   const [fPc, setFPc] = useState<number | ''>('');
+  const [tabValue, setTabValue] = useState(0);
 
   // form
   const [openForm, setOpenForm] = useState(false);
@@ -200,12 +209,23 @@ const Software: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Software
-      </Typography>
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+          Software & Licenses
+        </Typography>
+      </Box>
 
-      {/* Filters */}
-      <Card sx={{ mb: 2 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'var(--border-color)', mb: 3 }}>
+        <Tabs value={tabValue} onChange={(e, val) => setTabValue(val)} variant="fullWidth">
+          <Tab label="Software Inventory" style={{ fontWeight: 'bold', color: 'var(--text-primary)' }} />
+          <Tab label="License Dashboard" style={{ fontWeight: 'bold', color: 'var(--text-primary)' }} />
+        </Tabs>
+      </Box>
+
+      {tabValue === 0 && (
+        <Box className="animate-fade-in">
+          {/* Filters */}
+          <Card sx={{ mb: 2 }}>
         <CardContent>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
             <TextField
@@ -242,92 +262,146 @@ const Software: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Table Section */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
           <CircularProgress />
         </Box>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm p-8 text-center text-[var(--text-secondary)]">
-          <Typography variant="h6" sx={{ mb: 1, color: 'var(--text-primary)' }}>
-            No software found
-          </Typography>
-          <Typography>
-            Try changing filters or add new software.
-          </Typography>
-        </div>
       ) : (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
-                <tr>
-                  <th className="px-6 py-4 whitespace-nowrap">Lab / PC</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Name</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Version</th>
-                  <th className="px-6 py-4 whitespace-nowrap">License</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Expiry</th>
-                  {isAdmin && <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-color)]">
-                {filtered.map((row) => (
-                  <tr 
-                    key={row.id} 
-                    className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
-                  >
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">
-                      <div className="font-medium text-[var(--text-primary)]">
-                        {pcs.find((p) => p.id === row.pc)?.device_name || row.pc}
-                      </div>
-                      <div className="text-xs mt-0.5">
-                        {labs.find((l) => l.id === pcToLab(row.pc))?.name || pcToLab(row.pc) || 'Unknown Lab'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-primary)] font-medium">
-                      {row.name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
-                      {row.version || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
-                      {row.license_key ? (
-                        <span className="font-mono text-xs bg-[var(--bg-main)] px-2 py-1 rounded">
-                          {row.license_key}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
-                      {row.expiry_date ? row.expiry_date.slice(0,10) : '-'}
-                    </td>
+        <ModernTable
+        columns={[
+          { header: 'Software Name' },
+          { header: 'Lab / PC' },
+          { header: 'Version' },
+          { header: 'Status' },
+          { header: 'Actions', align: 'right' }
+        ]}
+        isEmpty={filtered.length === 0}
+        emptyMessage={items.length > 0 ? "No software matches filters" : "No software found"}
+      >
+        {filtered.map((row) => (
+          <ModernTableRow
+            key={row.id}
+            colSpan={5}
+            mainRow={
+              <>
+                <td className="px-6 py-4">
+                  <span className="text-sm font-semibold text-slate-800 dark:text-white tracking-tight">
+                    {row.name}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-slate-600 dark:text-gray-300">
+                      {pcs.find((p) => p.id === row.pc)?.device_name || 'Generic PC'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500 font-bold uppercase tracking-widest">
+                      {labs.find((l) => l.id === pcToLab(row.pc))?.name || 'Unknown Lab'}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-white/10">
+                    {row.version || 'v1.0'}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  {row.expiry_date && new Date(row.expiry_date) < new Date() ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                      Expired
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Active
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-right pr-6">
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <Tooltip title="Edit">
-                            <button
-                              onClick={() => openEdit(row)}
-                              className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                            >
-                              <Edit fontSize="small" />
-                            </button>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <button
-                              onClick={() => confirmDelete(row.id)}
-                              className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                            >
-                              <Delete fontSize="small" />
-                            </button>
-                          </Tooltip>
-                        </Stack>
-                      </td>
+                      <>
+                        <Tooltip title="Edit Software">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => openEdit(row)}
+                            sx={{ color: 'rgba(100,116,139,0.5)', '&:hover': { color: '#3b82f6', background: 'rgba(59,130,246,0.1)' } }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Software">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => confirmDelete(row.id)}
+                            sx={{ color: 'rgba(100,116,139,0.5)', '&:hover': { color: '#ef4444', background: 'rgba(239,68,68,0.1)' } }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </>
                     )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </div>
+                </td>
+              </>
+            }
+            expandedContent={
+              <div className="p-6 bg-slate-50/50 dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/5 animate-fade-in shadow-inner">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Basic Info */}
+                  <EquipmentCard 
+                    title="Software Identity"
+                    icon={Layers}
+                    accentColor="blue"
+                    fields={[
+                      { label: 'Name', value: row.name },
+                      { label: 'Version', value: row.version || '—' },
+                      { label: 'DB ID', value: row.id }
+                    ]}
+                  />
+
+                  {/* License Info */}
+                  <EquipmentCard 
+                    title="License Details"
+                    icon={Key}
+                    accentColor="purple"
+                    fields={[
+                      { 
+                        label: 'License Key', 
+                        value: row.license_key ? (
+                          <span className="font-mono text-xs bg-white dark:bg-white/5 px-2 py-1 rounded border border-slate-200 dark:border-white/10 block mt-1">
+                            {row.license_key}
+                          </span>
+                        ) : 'Not Provided'
+                      }
+                    ]}
+                  />
+
+                  {/* PC Hosting */}
+                  <EquipmentCard 
+                    title="Installation Target"
+                    icon={Monitor}
+                    accentColor="teal"
+                    fields={[
+                      { label: 'PC Name', value: pcs.find((p) => p.id === row.pc)?.device_name || '—' },
+                      { label: 'Lab Name', value: labs.find((l) => l.id === pcToLab(row.pc))?.name || '—' }
+                    ]}
+                  />
+
+                  {/* Expiry */}
+                  <EquipmentCard 
+                    title="Validity"
+                    icon={Calendar}
+                    accentColor="emerald"
+                    fields={[
+                      { label: 'Expiry Date', value: row.expiry_date ? row.expiry_date.slice(0, 10) : 'Lifetime / Permanent' }
+                    ]}
+                  />
+                </div>
+              </div>
+            }
+          />
+        ))}
+      </ModernTable>
       )}
 
       {/* Create/Edit Dialog */}
@@ -389,6 +463,14 @@ const Software: React.FC = () => {
       <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
         <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>
       </Snackbar>
+        </Box>
+      )}
+
+      {tabValue === 1 && (
+        <Box className="animate-fade-in mt-4">
+          <LicenseDashboard softwareList={items} pcs={pcs} labs={labs} />
+        </Box>
+      )}
     </Box>
   );
 };

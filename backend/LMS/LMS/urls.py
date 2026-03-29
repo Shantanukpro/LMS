@@ -9,7 +9,6 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import BulkImportAPIView, bulk_import_test_ui
-from .views import RegisterView,BulkImportAPIView,bulk_import_test_ui
 from users.views import LoginView
 
 urlpatterns = [
@@ -20,7 +19,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/tickets/', include('tickets.urls')),
     path('api/notifications/', include('notifications.urls')),
-    path('muster/', include('muster.urls')),  # Muster Register URLs
+    path('api/muster/', include('muster.urls')),  # Muster Register URLs
 
     # Admin interface
     path('admin/', admin.site.urls),

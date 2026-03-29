@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { User, Bell, CheckSquare, LayoutDashboard, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationInbox from './Notifications/NotificationInbox';
 import logo from '../assets/logo.png';
 
 const HeaderBar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
 
   const handleLogout = () => {
     logout();
@@ -15,10 +15,6 @@ const HeaderBar = () => {
   };
 
   const handleMusterClick = () => navigate('/muster/register');
-  const handleNotificationsClick = () => {
-    console.log('Notifications clicked');
-    setUnreadNotifications(0);
-  };
 
   /* Shared nav-link class factory */
   const navLinkCls = ({ isActive }) =>
@@ -86,18 +82,7 @@ const HeaderBar = () => {
           <div className="hidden md:block w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
 
           {/* Notifications */}
-          <button
-            onClick={handleNotificationsClick}
-            className={iconBtnCls}
-            title="Notifications"
-          >
-            <Bell size={17} />
-            {unreadNotifications > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold leading-none">
-                {unreadNotifications > 9 ? '9+' : unreadNotifications}
-              </span>
-            )}
-          </button>
+          {isAuthenticated && <NotificationInbox />}
 
           {/* Profile / Login */}
           {isAuthenticated ? (
@@ -113,9 +98,13 @@ const HeaderBar = () => {
                 }
                 title={user?.username || 'Account'}
               >
-                {/* Avatar: initials circle */}
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
-                  {user?.username?.charAt(0)?.toUpperCase() ?? <User size={13} />}
+                {/* Avatar: initials circle or image */}
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                  {user?.profile_picture ? (
+                    <img src={user.profile_picture} alt={user?.username} className="w-full h-full object-cover" />
+                  ) : (
+                    user?.username?.charAt(0)?.toUpperCase() ?? <User size={13} />
+                  )}
                 </div>
                 <span className="hidden sm:inline text-sm text-gray-700 dark:text-gray-300 font-medium max-w-[100px] truncate">
                   {user?.username || 'Account'}

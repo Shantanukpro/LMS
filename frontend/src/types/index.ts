@@ -1,187 +1,10 @@
-// API Response Types
+// Authentication & User
 export interface User {
   id: number;
   username: string;
   email: string;
   role: 'admin' | 'student';
-}
-
-export interface Lab {
-  id: number;
-  name: string;
-  location?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PC {
-  id: number;
-  lab: number;
-  name?: string;
-  pc_code: string;
-  device_name: string;
-  product_id?: string;
-  processor?: string;
-  ram?: string;
-  storage?: string;
-  status: 'working' | 'not_working' | 'under_repair';
-  connected: boolean;
-  gpu: boolean;
-  peripherals: boolean;
-  brand?: string;
-  serial_number?: string;
-  created_at: string;
-  updated_at: string;
-  cpu?: CPU;
-  peripheral_devices?: Peripheral[];
-}
-
-// Lab Equipment Types
-export interface LabEquipment {
-  id: number;
-  lab: number;
-  equipment_code: string;
-  name: string;
-  category: 'INFRASTRUCTURE' | 'APPLIANCE';
-  equipment_type: 'SERVER' | 'ROUTER' | 'SWITCH' | 'HUB' | 'PROJECTOR' | 'E_BOARD' | 'AC' | 'FAN' | 'LIGHT' | 'UPS' | 'OTHER';
-  brand?: string;
-  model_name?: string;
-  quantity: number;
-  status: 'working' | 'not_working' | 'under_repair';
-  is_networked: boolean;
-  installation_date?: string;
-  location_in_lab?: string;
-  remarks?: string;
-  created_at: string;
-  updated_at: string;
-  network_details?: NetworkEquipmentDetails;
-  server_details?: ServerDetails;
-  projector_details?: ProjectorDetails;
-  electrical_details?: ElectricalApplianceDetails;
-}
-
-export interface NetworkEquipmentDetails {
-  id: number;
-  equipment: number;
-  ip_address?: string;
-  mac_address?: string;
-  firmware_version?: string;
-  number_of_ports?: number;
-  rack_unit_size?: number;
-  managed_switch: boolean;
-  bandwidth_capacity?: string;
-  power_rating?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ServerDetails {
-  id: number;
-  equipment: number;
-  cpu_model?: string;
-  total_ram?: string;
-  total_storage?: string;
-  raid_config?: string;
-  virtualization_enabled: boolean;
-  operating_system?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProjectorDetails {
-  id: number;
-  equipment: number;
-  resolution?: string;
-  brightness_lumens?: number;
-  throw_type?: string;
-  hdmi_ports?: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ElectricalApplianceDetails {
-  id: number;
-  equipment: number;
-  power_rating?: string;
-  voltage?: string;
-  inverter_type: boolean;
-  energy_rating?: string;
-  service_due_date?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// CPU and OS for PCs
-export interface CPU {
-  id: number;
-  pc: number;
-  model: string;
-  clock_speed?: string;
-  core_count?: number;
-  integrated_graphics: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface OS {
-  id: number;
-  pc: number;
-  name: string;
-  version?: string;
-  install_date?: string;
-  expiration_date?: string;
-  architecture: '32-bit' | '64-bit';
-  product_key?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Peripheral {
-  id: number;
-  pc: number;
-  peripheral_type: 'monitor' | 'keyboard' | 'mouse' | 'headset' | 'webcam' | 'printer' | 'speaker' | 'other';
-  brand?: string;
-  model_name?: string;
-  serial_number?: string;
-  status: 'working' | 'not_working';
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Software {
-  id: number;
-  pc: number;
-  name: string;
-  version?: string;
-  license_key?: string;
-  expiry_date?: string;
-}
-
-export interface MaintenanceLog {
-  id: number;
-  pc?: number;
-  lab_equipment?: number;
-  peripheral?: number;
-  lab?: number;
-  reported_by?: number;
-  fixed_by?: number;
-  issue_description?: string;
-  status_before?: string;
-  status_after?: string;
-  status: 'pending' | 'fixed';
-  reported_on: string;
-  fixed_on?: string;
-  remarks?: string;
-}
-
-export interface Inventory {
-  id: string;
-  equipment_type: string;
-  total_quantity: number;
-  working_quantity: number;
-  not_working_quantity: number;
-  under_repair_quantity: number;
-  lab: number;
+  profile_picture: string | null;
 }
 
 export interface LoginRequest {
@@ -199,19 +22,227 @@ export interface RegisterRequest {
 export interface AuthResponse {
   access: string;
   refresh: string;
+  id?: number;
   role?: 'admin' | 'student';
   username?: string;
 }
 
+// Lab Model
+export interface Lab {
+  id: number;
+  name: string;
+  location: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// PC + Sub-models
+export interface CPU {
+  id: number;
+  model: string;
+  clock_speed: string;
+  core_count: number;
+  integrated_graphics: boolean;
+}
+
+export interface OS {
+  id: number;
+  name: string;
+  version: string;
+  architecture: '32-bit' | '64-bit';
+  product_key: string;
+  install_date: string;
+  expiration_date: string;
+}
+
+export interface Software {
+  id: number;
+  pc: number;
+  name: string;
+  version?: string;
+  license_key?: string;
+  expiry_date?: string;
+}
+
+export interface Peripheral {
+  id: number;
+  pc: number;
+  type: string;
+  status: 'working' | 'broken';
+  // legacy compat
+  peripheral_type?: string; 
+  brand?: string;
+  model_name?: string;
+  serial_number?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PC {
+  id: number;
+  device_name: string;
+  status: string;
+  connected: boolean;
+  gpu: boolean;
+  peripherals: boolean;
+  brand: string;
+  lab: number;
+  cpu?: CPU;
+  os?: OS;
+  software?: Software[];
+  peripherals_list?: Peripheral[];
+  // Fallbacks for older type usages
+  pc_code?: string;
+  product_id?: string;
+  processor?: string;
+  ram?: string;
+  storage?: string;
+  serial_number?: string;
+  graphics_card?: string;
+  created_at?: string;
+  updated_at?: string;
+  peripheral_devices?: Peripheral[];
+}
+
+// Lab Equipment
+export type EquipmentType = 'ROUTER' | 'SWITCH' | 'HUB' | 'SERVER' | 'PROJECTOR' | 'E_BOARD' | 'AC' | 'FAN' | 'LIGHT' | 'UPS' | 'OTHER';
+
+export interface NetworkEquipmentDetails {
+  ip_address: string;
+  mac_address: string;
+  firmware_version: string;
+  managed_switch: boolean;
+  bandwidth_capacity: string;
+}
+
+export interface ServerDetails {
+  total_ram: string;
+  raid_config: string;
+  virtualization_enabled: boolean;
+}
+
+export interface ProjectorDetails {
+  resolution: string;
+  brightness_lumens: number;
+  throw_type: string;
+}
+
+export interface ElectricalApplianceDetails {
+  power_rating: string;
+  voltage: string;
+  inverter_type: string;
+  energy_rating: string;
+}
+
+export interface LabEquipment {
+  id: number;
+  lab: number;
+  category: string;
+  status: string;
+  quantity: number;
+  location_in_lab: string;
+  equipment_type: EquipmentType;
+  details: NetworkEquipmentDetails | ServerDetails | ProjectorDetails | ElectricalApplianceDetails;
+  // Fallbacks for older type usages
+  equipment_code?: string;
+  name?: string;
+  brand?: string;
+  model_name?: string;
+  is_networked?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Maintenance & Tickets
+export interface MaintenanceLog {
+  id: number;
+  pc?: number | null;
+  lab_equipment?: number | null;
+  peripheral?: number | null;
+  status_before: string;
+  status_after: string;
+  reported_by: User;
+  fixed_by: User;
+  created_at: string;
+  updated_at: string;
+  // Old fields used in UI
+  issue_description?: string;
+  remarks?: string;
+  status?: 'pending' | 'fixed' | string;
+  reported_on?: string;
+  fixed_on?: string;
+  lab?: number;
+}
+
 export interface Ticket {
   id: number;
-  title: string;
+  student: number;
+  pc: number;
+  issue_description: string;
+  status: string;
+  created_at?: string;
+  // fallback
+  title?: string;
   description?: string;
-  status: 'open' | 'in_progress' | 'closed' | string;
+}
+
+// Notifications
+export type NotificationType = 'escalation' | 'info';
+
+export interface Notification {
+  id: number;
+  user: number;
+  maintenance_log?: number;
+  ticket?: number;
+  type: NotificationType;
+  message: string;
+  is_read: boolean;
   created_at: string;
 }
 
-// Import related types
+export interface MaintenanceNotification {
+  id: number;
+  lab: string;
+  issue_description: string;
+  created_at: string;
+  technician_email: string;
+}
+
+// Muster / Attendance
+export interface MusterSession {
+  id: number;
+  lab: number;
+  class_name: string;
+  chunk: string;
+  date: string;
+  // Fallbacks
+  time?: string;
+  batch?: string;
+  created_at?: string;
+  lab_name?: string;
+  entries?: MusterEntry[];
+}
+
+export interface MusterEntry {
+  id: number;
+  session: number;
+  student_roll_no: string;
+  pc: number;
+  // Fallbacks
+  sr_no?: number;
+  roll_no?: string;
+  pc_name?: string;
+}
+
+export interface MusterSessionCreate {
+  date: string;
+  time: string;
+  lab: number;
+  class_name: string;
+  batch: string;
+}
+
+// Import Types
 export interface ImportResult {
   created: number;
   skipped: number;
@@ -224,44 +255,12 @@ export interface BulkImportRequest {
   lab_id?: number;
 }
 
-// Notification types
-export interface MaintenanceNotification {
-  id: number;
-  lab: string;
-  issue_description: string;
-  created_at: string;
-  technician_email: string;
-}
-
-export interface RedirectAfterLoginResponse {
-  redirect_to: string;
-}
-
-// Muster Register Types
-export interface MusterSession {
-  id: number;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM:SS
+export interface Inventory {
+  id: string;
+  equipment_type: string;
+  total_quantity: number;
+  working_quantity: number;
+  not_working_quantity: number;
+  under_repair_quantity: number;
   lab: number;
-  lab_name: string;
-  class_name: string;
-  batch: string;
-  created_at: string;
-  entries: MusterEntry[];
-}
-
-export interface MusterEntry {
-  id: number;
-  sr_no: number;
-  roll_no: string;
-  pc: number;
-  pc_name: string;
-}
-
-export interface MusterSessionCreate {
-  date: string;
-  time: string;
-  lab: number;
-  class_name: string;
-  batch: string;
 }

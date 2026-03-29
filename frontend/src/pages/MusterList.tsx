@@ -17,6 +17,10 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Add, Visibility, Delete, Refresh } from '@mui/icons-material';
+import ModernTable from '../components/Common/ModernTable';
+import ModernTableRow from '../components/Common/ModernTableRow';
+import EquipmentCard from '../components/Labs/EquipmentCard';
+import { ClipboardList, Calendar, Users, Hash } from 'lucide-react';
 
 interface MusterSession {
   id: number;
@@ -104,74 +108,125 @@ const MusterList: React.FC = () => {
         </Button>
       </Stack>
 
-      {/* Content */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
-      ) : sessions.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm p-8 text-center text-[var(--text-secondary)]">
-          <Typography variant="h6" sx={{ mb: 1, color: 'var(--text-primary)' }}>
-            No muster sessions found
-          </Typography>
-          <Typography>Click "Create New Session" to get started.</Typography>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
-                <tr>
-                  <th className="px-6 py-4 whitespace-nowrap">Date</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Time</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Lab</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Class</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Batch</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Entries</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Created</th>
-                  <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-color)]">
-                {sessions.map((s) => (
-                  <tr
-                    key={s.id}
-                    className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
-                  >
-                    <td className="px-6 py-4 text-sm text-[var(--text-primary)] font-medium">{s.date}</td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{s.time?.slice(0, 5)}</td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{s.lab_name}</td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{s.class_name}</td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{s.batch}</td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{s.entry_count}</td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)] whitespace-nowrap">{s.created_at?.slice(0, 10)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <Tooltip title="View/Edit">
-                          <button
-                            onClick={() => navigate(`/muster/register/${s.id}`)}
-                            className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                          >
-                            <Visibility fontSize="small" />
-                          </button>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <button
-                            onClick={() => confirmDelete(s.id)}
-                            className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                          >
-                            <Delete fontSize="small" />
-                          </button>
-                        </Tooltip>
-                      </Stack>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* Table Section */}
+      <ModernTable
+        columns={[
+          { header: 'Session Details' },
+          { header: 'Lab' },
+          { header: 'Schedule' },
+          { header: 'Students' },
+          { header: 'Actions', align: 'right' }
+        ]}
+        isEmpty={sessions.length === 0}
+        emptyMessage={sessions.length > 0 ? "No sessions match search" : "No muster sessions found"}
+      >
+        {sessions.map((s) => (
+          <ModernTableRow
+            key={s.id}
+            colSpan={5}
+            mainRow={
+              <>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-white tracking-tight">
+                      {s.class_name}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500 font-bold uppercase tracking-widest">
+                      Batch {s.batch}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="text-sm text-slate-600 dark:text-gray-300 font-medium">
+                    {s.lab_name}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm text-slate-700 dark:text-gray-200">
+                      {s.date}
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-gray-400 font-mono">
+                      {s.time?.slice(0, 5)}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                    {s.entry_count} Present
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-right pr-6">
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <Tooltip title="View/Edit Session">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => navigate(`/muster/register/${s.id}`)}
+                        sx={{ color: 'rgba(100,116,139,0.5)', '&:hover': { color: '#3b82f6', background: 'rgba(59,130,246,0.1)' } }}
+                      >
+                        <Visibility fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Session">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => confirmDelete(s.id)}
+                        sx={{ color: 'rgba(100,116,139,0.5)', '&:hover': { color: '#ef4444', background: 'rgba(239,68,68,0.1)' } }}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                </td>
+              </>
+            }
+            expandedContent={
+              <div className="p-6 bg-slate-50/50 dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/5 animate-fade-in shadow-inner">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <EquipmentCard 
+                    title="Session Overview"
+                    icon={ClipboardList}
+                    accentColor="blue"
+                    fields={[
+                      { label: 'Class', value: s.class_name },
+                      { label: 'Batch', value: s.batch },
+                      { label: 'Lab Target', value: s.lab_name }
+                    ]}
+                  />
+                  <EquipmentCard 
+                    title="Time & Schedule"
+                    icon={Calendar}
+                    accentColor="purple"
+                    fields={[
+                      { label: 'Session Date', value: s.date },
+                      { label: 'Start Time', value: s.time },
+                      { label: 'Created At', value: s.created_at ? new Date(s.created_at).toLocaleString() : '—' }
+                    ]}
+                  />
+                  <EquipmentCard 
+                    title="Roll Stats"
+                    icon={Users}
+                    accentColor="teal"
+                    fields={[
+                      { label: 'Total Entries', value: s.entry_count },
+                      { label: 'Status', value: 'Completed' }
+                    ]}
+                  />
+                  <EquipmentCard 
+                    title="Reference Info"
+                    icon={Hash}
+                    accentColor="blue"
+                    fields={[
+                      { label: 'Session ID', value: `#${s.id}` },
+                      { label: 'DB Record', value: 'Canonical' }
+                    ]}
+                  />
+                </div>
+              </div>
+            }
+          />
+        ))}
+      </ModernTable>
 
       {/* Delete Confirm */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>

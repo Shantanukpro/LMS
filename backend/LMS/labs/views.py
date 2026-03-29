@@ -167,6 +167,23 @@ class SoftwareDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminOrReadOnly]
 
 
+class PCSoftwareList(generics.ListCreateAPIView):
+    serializer_class = SoftwareSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get_queryset(self):
+        pc_id = self.kwargs['pc_id']
+        return Software.objects.filter(pc_id=pc_id)
+
+    def perform_create(self, serializer):
+        pc_id = self.kwargs['pc_id']
+        try:
+            pc = PC.objects.get(id=pc_id)
+            serializer.save(pc=pc)
+        except PC.DoesNotExist:
+            raise ValidationError({'pc': 'PC not found'})
+
+
 # ===============================
 # Lab Equipment Views
 # ===============================
@@ -313,6 +330,21 @@ def inventory_list(request):
     inventory_data = []
 
     for lab in labs:
+        # 1) Add PC counts to inventory
+        pcs_in_lab = PC.objects.filter(lab=lab)
+        if pcs_in_lab.exists():
+            inventory_data.append({
+                'id': f"{lab.id}_COMPUTER",
+                'lab': lab.id,
+                'lab_name': lab.name,
+                'equipment_type': 'COMPUTER',
+                'total_quantity': pcs_in_lab.count(),
+                'working_quantity': pcs_in_lab.filter(status='working').count(),
+                'not_working_quantity': pcs_in_lab.filter(status='not_working').count(),
+                'under_repair_quantity': pcs_in_lab.filter(status='under_repair').count(),
+            })
+
+        # 2) Add other Lab Equipment counts
         equipment_in_lab = LabEquipment.objects.filter(lab=lab)
         equipment_types = equipment_in_lab.values_list('equipment_type', flat=True).distinct()
 

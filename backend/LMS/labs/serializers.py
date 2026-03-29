@@ -22,35 +22,83 @@ class CPUSerializer(serializers.ModelSerializer):
     class Meta:
         model = CPU
         fields = '__all__'
+        read_only_fields = ('pc',)
 
 
 class OSSerializer(serializers.ModelSerializer):
     class Meta:
         model = OS
         fields = '__all__'
+        read_only_fields = ('pc',)
 
 
 class PeripheralSerializer(serializers.ModelSerializer):
     class Meta:
         model = Peripheral
         fields = '__all__'
+        read_only_fields = ('pc',)
 
 
 class SoftwareSerializer(serializers.ModelSerializer):
     class Meta:
         model = Software
         fields = '__all__'
+        read_only_fields = ('pc',)
 
 
 class PCSerializer(serializers.ModelSerializer):
-    cpu = CPUSerializer(read_only=True)
+    cpu = CPUSerializer(required=False)
     os = OSSerializer(read_only=True)
-    peripheral_devices = PeripheralSerializer(many=True, read_only=True)
+    peripheral_devices = PeripheralSerializer(many=True, required=False)
     installed_software = SoftwareSerializer(many=True, read_only=True)
 
     class Meta:
         model = PC
         fields = '__all__'
+
+    def create(self, validated_data):
+        cpu_data = validated_data.pop('cpu', None)
+        peripherals_data = validated_data.pop('peripheral_devices', [])
+        
+        pc = PC.objects.create(**validated_data)
+        
+        if cpu_data:
+            CPU.objects.create(pc=pc, **cpu_data)
+            
+        for p_data in peripherals_data:
+            Peripheral.objects.create(pc=pc, **p_data)
+            
+        return pc
+
+    def update(self, instance, validated_data):
+        cpu_data = validated_data.pop('cpu', None)
+        peripherals_data = validated_data.pop('peripheral_devices', [])
+        
+        # Update PC basic fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Update CPU
+        if cpu_data:
+            cpu_obj, created = CPU.objects.get_or_create(pc=instance)
+            for attr, value in cpu_data.items():
+                setattr(cpu_obj, attr, value)
+            cpu_obj.save()
+            
+        # Update Peripherals (Upsert based on type for common ones like keyboard/mouse)
+        for p_data in peripherals_data:
+            p_type = p_data.get('peripheral_type')
+            if p_type:
+                p_obj, created = Peripheral.objects.get_or_create(
+                    pc=instance, 
+                    peripheral_type=p_type
+                )
+                for attr, value in p_data.items():
+                    setattr(p_obj, attr, value)
+                p_obj.save()
+                
+        return instance
 
 
 # ===============================
@@ -102,6 +150,12 @@ class MaintenanceLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaintenanceLog
         fields = '__all__'
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['reported_by'] = UserSerializer(instance.reported_by).data if instance.reported_by else None
+        representation['fixed_by'] = UserSerializer(instance.fixed_by).data if instance.fixed_by else None
+        return representation
 
     def validate(self, data):
         # Validate that exactly one target is set

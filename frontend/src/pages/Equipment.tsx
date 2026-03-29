@@ -22,11 +22,15 @@ import {
 } from '@mui/material';
 import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
 import { labEquipmentAPI, labsAPI } from '../services/api';
-import type { LabEquipment, Lab } from '../types';
- 
+import type { LabEquipment, Lab, NetworkEquipmentDetails, ServerDetails, ProjectorDetails, ElectricalApplianceDetails } from '../types';
+import { Eye, Server as ServerIcon, Network, Cpu, HardDrive, Activity } from 'lucide-react';
+import ModernTable from '../components/Common/ModernTable';
+import ModernTableRow from '../components/Common/ModernTableRow';
+import EquipmentCard from '../components/Labs/EquipmentCard';
+import BooleanBadge from '../components/Labs/BooleanBadge';
 
 const EQUIPMENT_TYPES = [
-  'SERVER', 'ROUTER', 'SWITCH', 'HUB', 'PROJECTOR', 'E_BOARD', 'AC', 'FAN', 'LIGHT', 'UPS', 'OTHER',
+  'ROUTER', 'SWITCH', 'HUB', 'SERVER', 'PROJECTOR', 'E_BOARD', 'AC', 'FAN', 'LIGHT', 'UPS', 'OTHER'
 ] as const;
 const STATUS = ['working', 'not_working', 'under_repair'] as const;
 
@@ -84,6 +88,9 @@ const Equipment: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<EquipmentForm>(emptyForm);
 
+  // details dialog
+  const [detailsItem, setDetailsItem] = useState<LabEquipment | null>(null);
+
   // delete
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -137,12 +144,12 @@ const Equipment: React.FC = () => {
     setFormData({
       lab: row.lab,
       name: row.name || '',
-      equipment_code: row.equipment_code,
+      equipment_code: row.equipment_code || '',
       equipment_type: row.equipment_type,
       brand: row.brand || '',
       model_name: row.model_name || '',
       location_in_lab: row.location_in_lab || '',
-      status: row.status,
+      status: row.status as any,
     });
     setOpenForm(true);
   };
@@ -252,7 +259,9 @@ const Equipment: React.FC = () => {
             <TextField select label="Type" value={fType} onChange={(e) => setFType(e.target.value as any)} sx={{ minWidth: 160 }}>
               <MenuItem value="">All</MenuItem>
               {EQUIPMENT_TYPES.map((t) => (
-                <MenuItem key={t} value={t}>{t}</MenuItem>
+                <MenuItem key={t} value={t} style={{ textTransform: 'capitalize' }}>
+                  {t.replace('_', ' ').toLowerCase()}
+                </MenuItem>
               ))}
             </TextField>
             <TextField select label="Status" value={fStatus} onChange={(e) => setFStatus(e.target.value as any)} sx={{ minWidth: 180 }}>
@@ -280,77 +289,121 @@ const Equipment: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
           <CircularProgress />
         </Box>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm p-8 text-center text-[var(--text-secondary)]">
-          <Typography variant="h6" sx={{ mb: 1, color: 'var(--text-primary)' }}>
-            {items.length > 0 ? 'No equipment matches your search' : 'No equipment found'}
-          </Typography>
-          <Typography>
-            {items.length > 0 ? 'Try different filters.' : 'Click "Add Equipment" to create some.'}
-          </Typography>
-        </div>
       ) : (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden mb-6 filter drop-shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold sticky top-0 z-10 backdrop-blur-sm shadow-sm">
-                <tr>
-                  <th className="px-6 py-4 whitespace-nowrap">Lab & Location</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Brand / Model</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Type</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Status</th>
-                  {isAdmin && <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-color)]">
-                {filtered.map((item) => (
-                  <tr 
-                    key={item.id} 
-                    className="hover:bg-[var(--bg-main)] transition-colors odd:bg-transparent even:bg-[var(--bg-main)]/30 backdrop-blur-sm group"
-                  >
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">
-                      <div className="font-medium text-[var(--text-primary)]">
-                        {labs.find(l => l.id === item.lab)?.name || 'N/A'}
-                      </div>
-                      <div className="text-xs mt-0.5">{item.location_in_lab || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-primary)] font-medium">
-                      {item.brand || 'Generic'} {item.model_name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
-                      {item.equipment_type}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(item.status)}
-                    </td>
+        <ModernTable
+        columns={[
+          { header: 'Lab & Location' },
+          { header: 'Brand / Model' },
+          { header: 'Type' },
+          { header: 'Status' },
+          { header: 'Actions', align: 'right' }
+        ]}
+        isEmpty={filtered.length === 0}
+        emptyMessage={items.length > 0 ? "No equipment matches filters" : "No equipment found"}
+      >
+        {filtered.map((item) => (
+          <ModernTableRow
+            key={item.id}
+            colSpan={5}
+            mainRow={
+              <>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-white tracking-tight">
+                      {labs.find(l => l.id === item.lab)?.name || 'N/A'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500 font-bold uppercase tracking-widest">
+                      {item.location_in_lab || 'Unknown Location'}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="text-sm text-slate-600 dark:text-gray-300 font-medium">
+                    {item.brand || 'Generic'} {item.model_name}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-white/10">
+                    {item.equipment_type}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  {getStatusBadge(item.status)}
+                </td>
+                <td className="px-6 py-4 text-right pr-6">
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <Tooltip title="Edit">
-                            <button
-                              onClick={() => openEdit(item)}
-                              className="p-1.5 text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                            >
-                              <Edit fontSize="small" />
-                            </button>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <button
-                              onClick={() => confirmDelete(item.id)}
-                              className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-flex items-center justify-center opacity-0 group-hover:opacity-100"
-                            >
-                              <Delete fontSize="small" />
-                            </button>
-                          </Tooltip>
-                        </Stack>
-                      </td>
+                      <>
+                        <Tooltip title="Edit Equipment">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => openEdit(item)}
+                            sx={{ color: 'rgba(100,116,139,0.5)', '&:hover': { color: '#3b82f6', background: 'rgba(59,130,246,0.1)' } }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Equipment">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => confirmDelete(item.id)}
+                            sx={{ color: 'rgba(100,116,139,0.5)', '&:hover': { color: '#ef4444', background: 'rgba(239,68,68,0.1)' } }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </>
                     )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </div>
+                </td>
+              </>
+            }
+            expandedContent={
+              <div className="p-6 bg-slate-50/50 dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/5 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Basic Info Card */}
+                  <EquipmentCard 
+                    title="Asset Details"
+                    icon={ServerIcon}
+                    accentColor="blue"
+                    fields={[
+                      { label: 'Equipment Code', value: item.equipment_code },
+                      { label: 'Brand', value: item.brand || '—' },
+                      { label: 'Model Name', value: item.model_name || '—' },
+                      { label: 'Location', value: item.location_in_lab || '—' }
+                    ]}
+                  />
+
+                  {/* Technical Specs (if available) */}
+                  {item.details && (
+                    <EquipmentCard 
+                      title={`${item.equipment_type} Specifications`}
+                      icon={['ROUTER', 'SWITCH', 'HUB'].includes(item.equipment_type) ? Network : item.equipment_type === 'SERVER' ? HardDrive : Cpu}
+                      accentColor="teal"
+                      fields={Object.entries(item.details).map(([k, v]) => ({
+                        label: k.replace(/_/g, ' '),
+                        value: typeof v === 'boolean' ? <BooleanBadge value={v} /> : String(v)
+                      }))}
+                    />
+                  )}
+
+                  {/* Maintenance Card (Static for now or placeholders) */}
+                  <EquipmentCard 
+                    title="Lifecycle Info"
+                    icon={Activity}
+                    accentColor="purple"
+                    fields={[
+                      { label: 'Status', value: item.status.replace('_', ' ').toUpperCase() },
+                      { label: 'Primary Lab', value: labs.find(l => l.id === item.lab)?.name || 'N/A' },
+                      { label: 'Tracking ID', value: item.id }
+                    ]}
+                  />
+                </div>
+              </div>
+            }
+          />
+        ))}
+      </ModernTable>
       )}
 
       {/* Create/Edit Dialog */}
@@ -368,7 +421,9 @@ const Equipment: React.FC = () => {
                 </TextField>
                 <TextField select label="Type" value={formData.equipment_type} onChange={(e) => setFormData({ ...formData, equipment_type: e.target.value as any })} required fullWidth>
                   {EQUIPMENT_TYPES.map((t) => (
-                    <MenuItem key={t} value={t}>{t}</MenuItem>
+                    <MenuItem key={t} value={t} style={{ textTransform: 'capitalize' }}>
+                      {t.replace('_', ' ').toLowerCase()}
+                    </MenuItem>
                   ))}
                 </TextField>
               </Stack>

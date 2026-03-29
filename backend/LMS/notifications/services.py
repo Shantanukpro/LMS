@@ -14,7 +14,7 @@ def create_notification(user_id, maintenance_log_id, message, notification_type=
 
 def get_notifications_for_user(user_id):
     """Return all notifications for a user, ordered by most recent first."""
-    return Notification.objects.filter(user_id=user_id)
+    return Notification.objects.filter(user_id=user_id).order_by('-created_at')
 
 
 def mark_as_read(notification_id, user_id):

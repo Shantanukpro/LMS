@@ -21,6 +21,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import logoUrl from '../../assets/logo.png';
 import { useColorMode } from '../../contexts/ThemeContext';
 import { DarkMode, LightMode } from '@mui/icons-material';
+import NotificationInbox from '../Notifications/NotificationInbox';
 
 interface HeaderProps {
   onMenuClick: () => void;

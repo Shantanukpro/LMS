@@ -98,14 +98,14 @@ const Labs: React.FC = () => {
       if (editingId) {
         const updated = await labsAPI.update(editingId, {
           name: formData.name.trim(),
-          location: formData.location?.trim() || undefined,
+          location: formData.location?.trim() || '',
         });
         setLabs((prev) => prev.map((l) => (l.id === editingId ? updated : l)));
         setSuccess('Lab updated successfully');
       } else {
         const created = await labsAPI.create({
           name: formData.name.trim(),
-          location: formData.location?.trim() || undefined,
+          location: formData.location?.trim() || '',
         });
         setLabs((prev) => [created, ...prev]);
         setSuccess('Lab created successfully');

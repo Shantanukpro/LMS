@@ -430,8 +430,12 @@ class ElectricalApplianceDetails(models.Model):
 class MaintenanceLog(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
-        ('fixed', 'Fixed'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+        ('escalated', 'Escalated'),
     )
+
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
 
     pc = models.ForeignKey(PC, on_delete=models.CASCADE, related_name="maintenance_logs", null=True, blank=True)
     lab_equipment = models.ForeignKey(LabEquipment, on_delete=models.CASCADE, related_name="maintenance_logs", null=True, blank=True)

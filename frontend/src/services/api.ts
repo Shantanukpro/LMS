@@ -3,7 +3,8 @@ import type {
   User, Lab, PC, LabEquipment, NetworkEquipmentDetails, ServerDetails,
   ProjectorDetails, ElectricalApplianceDetails, CPU, OS, Peripheral, Software, 
   MaintenanceLog, ImportResult, BulkImportRequest, MaintenanceNotification,
-  LoginRequest, RegisterRequest, AuthResponse, MusterSession, MusterSessionCreate, MusterEntry
+  LoginRequest, RegisterRequest, AuthResponse, MusterSession, MusterSessionCreate, MusterEntry,
+  Ticket, Notification, Inventory,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
@@ -39,18 +40,6 @@ export const navigationAPI = {
   },
 };
 
-// Tickets API
-export const ticketsAPI = {
-  create: async (payload: { title: string; description?: string }): Promise<{ id: number; title: string; description?: string; status: string; created_at: string }> => {
-    const response = await api.post('/tickets/create/', payload);
-    return response.data;
-  },
-  listMy: async (): Promise<Array<{ id: number; title: string; description?: string; status: string; created_at: string }>> => {
-    const response = await api.get('/tickets/my/');
-    return response.data;
-  },
-};
-
 const clearTokens = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
@@ -62,8 +51,6 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Debug Logging
-  console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
   return config;
 }, (error) => {
   console.error('[API Request Error]', error);
@@ -73,8 +60,6 @@ api.interceptors.request.use((config) => {
 // Response interceptor to handle token refresh and global errors
 api.interceptors.response.use(
   (response) => {
-    // Debug Logging
-    console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
     return response;
   },
   async (error) => {
@@ -151,6 +136,29 @@ export const authAPI = {
   },
 };
 
+// Users API
+export const usersAPI = {
+  getAll: async (): Promise<User[]> => {
+    const response = await api.get('/users/');
+    return extractResults<User>(response.data);
+  },
+  
+  getById: async (id: number): Promise<User> => {
+    const response = await api.get(`/users/${id}/`);
+    return response.data;
+  },
+  
+  updateProfile: async (id: number, data: FormData): Promise<User> => {
+    // Requires FormData because of profile_picture upload
+    const response = await api.patch(`/users/${id}/`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+};
+
 // Labs API
 export const labsAPI = {
   getAll: async (): Promise<Lab[]> => {
@@ -178,7 +186,27 @@ export const labsAPI = {
   },
 };
 
-// LabEquipment API (comprehensive equipment management)
+// Tickets API
+export const ticketsAPI = {
+  create: async (payload: Omit<Ticket, 'id' | 'status' | 'created_at'>): Promise<Ticket> => {
+    const response = await api.post('/tickets/create/', payload);
+    return response.data;
+  },
+  getAll: async (): Promise<Ticket[]> => {
+    const response = await api.get('/tickets/list/');
+    return extractResults<Ticket>(response.data);
+  },
+  listMy: async (): Promise<Ticket[]> => {
+    const response = await api.get('/tickets/list/');
+    return extractResults<Ticket>(response.data);
+  },
+  update: async (id: number, data: Partial<Ticket>): Promise<Ticket> => {
+    const response = await api.patch(`/tickets/${id}/update/`, data);
+    return response.data;
+  },
+};
+
+// LabEquipment API
 export const labEquipmentAPI = {
   getAll: async (): Promise<LabEquipment[]> => {
     const response = await api.get('/lab-equipment/');
@@ -209,32 +237,28 @@ export const labEquipmentAPI = {
     await api.delete(`/lab-equipment/${id}/`);
   },
 
-  // Network equipment details
   updateNetworkDetails: async (equipmentId: number, data: Partial<NetworkEquipmentDetails>): Promise<NetworkEquipmentDetails> => {
     const response = await api.patch(`/lab-equipment/${equipmentId}/network-details/`, data);
     return response.data;
   },
 
-  // Server details
   updateServerDetails: async (equipmentId: number, data: Partial<ServerDetails>): Promise<ServerDetails> => {
     const response = await api.patch(`/lab-equipment/${equipmentId}/server-details/`, data);
     return response.data;
   },
 
-  // Projector details
   updateProjectorDetails: async (equipmentId: number, data: Partial<ProjectorDetails>): Promise<ProjectorDetails> => {
     const response = await api.patch(`/lab-equipment/${equipmentId}/projector-details/`, data);
     return response.data;
   },
 
-  // Electrical appliance details
   updateElectricalDetails: async (equipmentId: number, data: Partial<ElectricalApplianceDetails>): Promise<ElectricalApplianceDetails> => {
     const response = await api.patch(`/lab-equipment/${equipmentId}/electrical-details/`, data);
     return response.data;
   },
 };
 
-// PCs API with enhanced functionality
+// PCs API
 export const pcsAPI = {
   getAll: async (): Promise<PC[]> => {
     const response = await api.get('/pcs/');
@@ -265,7 +289,6 @@ export const pcsAPI = {
     await api.delete(`/pcs/${id}/`);
   },
 
-  // CPU management
   getCPU: async (pcId: number): Promise<CPU> => {
     const response = await api.get(`/pcs/${pcId}/cpu/`);
     return response.data;
@@ -276,7 +299,6 @@ export const pcsAPI = {
     return response.data;
   },
 
-  // OS management
   getOS: async (pcId: number): Promise<OS> => {
     const response = await api.get(`/pcs/${pcId}/os/`);
     return response.data;
@@ -287,7 +309,6 @@ export const pcsAPI = {
     return response.data;
   },
 
-  // Peripherals management
   getPeripherals: async (pcId: number): Promise<Peripheral[]> => {
     const response = await api.get(`/pcs/${pcId}/peripherals/`);
     return extractResults<Peripheral>(response.data);
@@ -307,7 +328,6 @@ export const pcsAPI = {
     await api.delete(`/peripherals/${id}/`);
   },
 };
-
 
 // Software API
 export const softwareAPI = {
@@ -341,7 +361,7 @@ export const softwareAPI = {
   },
 };
 
-// Maintenance API with enhanced functionality
+// Maintenance API
 export const maintenanceAPI = {
   getAll: async (): Promise<MaintenanceLog[]> => {
     const response = await api.get('/maintenance/');
@@ -368,7 +388,7 @@ export const maintenanceAPI = {
     return response.data;
   },
   
-  create: async (data: Omit<MaintenanceLog, 'id' | 'reported_on' | 'fixed_on'>): Promise<MaintenanceLog> => {
+  create: async (data: Partial<MaintenanceLog>): Promise<MaintenanceLog> => {
     const response = await api.post('/maintenance/', data);
     return response.data;
   },
@@ -383,7 +403,7 @@ export const maintenanceAPI = {
   },
 };
 
-// Bulk Import API
+// Import API
 export const importAPI = {
   importLabs: async (file: File): Promise<ImportResult> => {
     const formData = new FormData();
@@ -421,6 +441,32 @@ export const importAPI = {
 
 // Notification API
 export const notificationAPI = {
+  getAll: async (): Promise<Notification[]> => {
+    const response = await api.get('/notifications/');
+    return extractResults<Notification>(response.data);
+  },
+
+  getUnreadCount: async (): Promise<{ unread_count: number }> => {
+    const response = await api.get('/notifications/unread-count/');
+    return response.data;
+  },
+
+  markAsRead: async (id: number): Promise<{ detail: string }> => {
+    const response = await api.patch(`/notifications/${id}/read/`);
+    return response.data;
+  },
+
+  markAllAsRead: async (): Promise<{ detail: string }> => {
+    const response = await api.patch('/notifications/read-all/');
+    return response.data;
+  },
+
+  sendSms: async (data: { id: number; lab: string; issue_description: string; created_at: string; admin_phone: string }): Promise<{ detail: string }> => {
+    const response = await api.post('/notifications/send-sms/', data);
+    return response.data;
+  },
+
+  // Legacy fallback
   sendMaintenanceNotification: async (data: MaintenanceNotification): Promise<boolean> => {
     const response = await api.post('/notifications/maintenance/', data);
     return response.data;
@@ -429,7 +475,6 @@ export const notificationAPI = {
 
 // Muster API
 export const musterAPI = {
-  // Create a new muster session
   createSession: async (data: { 
     date: string; 
     time: string; 
@@ -437,11 +482,10 @@ export const musterAPI = {
     class_name: string; 
     batch: string 
   }): Promise<{ id: number }> => {
-    const response = await api.post('/muster/api/sessions/', data);
+    const response = await api.post('/muster/sessions/', data);
     return response.data;
   },
   
-  // Get all muster sessions (for listing)
   listSessions: async (): Promise<Array<{
     id: number;
     date: string;
@@ -453,11 +497,10 @@ export const musterAPI = {
     created_at: string;
     entry_count: number;
   }>> => {
-    const response = await api.get('/muster/api/sessions/list/');
+    const response = await api.get('/muster/sessions/');
     return response.data;
   },
   
-  // Get a single muster session with entries
   getSession: async (sessionId: number): Promise<{
     id: number;
     date: string;
@@ -475,11 +518,10 @@ export const musterAPI = {
       pc_name: string;
     }>;
   }> => {
-    const response = await api.get(`/muster/api/sessions/${sessionId}/`);
+    const response = await api.get(`/muster/sessions/${sessionId}/`);
     return response.data;
   },
   
-  // Update a muster session (including entries)
   updateSession: async (sessionId: number, data: { 
     date: string; 
     time: string; 
@@ -492,29 +534,34 @@ export const musterAPI = {
       pc: number;
     }>
   }): Promise<{ status: string }> => {
-    const response = await api.put(`/muster/api/sessions/${sessionId}/update/`, data);
+    const response = await api.put(`/muster/sessions/${sessionId}/`, data);
     return response.data;
   },
   
-  // Delete a muster session
   deleteSession: async (sessionId: number): Promise<{ status: string }> => {
-    const response = await api.delete(`/muster/api/sessions/${sessionId}/delete/`);
+    const response = await api.delete(`/muster/sessions/${sessionId}/`);
     return response.data;
   },
   
-  // Save entries for a session (alternative to updateSession)
   saveEntries: async (sessionId: number, entries: Array<{
     sr_no: number;
     roll_no: string;
     pc: number;
   }>): Promise<{ status: string }> => {
-    const response = await api.post(`/muster/api/sessions/${sessionId}/entries/`, { entries });
+    const response = await api.post(`/muster/sessions/${sessionId}/entries/`, { entries });
     return response.data;
   },
   
-  // Get PCs for a lab (for dropdowns)
   getPCsForLab: async (labId: number): Promise<Array<{ id: number; device_name: string }>> => {
-    const response = await api.get(`/muster/api/pcs/${labId}/`);
+    const response = await api.get(`/muster/pcs/${labId}/`);
+    return response.data;
+  },
+};
+
+// Inventory API
+export const inventoryAPI = {
+  getAll: async (): Promise<Inventory[]> => {
+    const response = await api.get('/inventory/');
     return response.data;
   },
 };
