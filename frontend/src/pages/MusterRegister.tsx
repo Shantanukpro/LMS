@@ -1,37 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { labsAPI, musterAPI, pcsAPI } from '../services/api';
-import { Lab, PC } from '../types';
-import { Button, Form, Input, Select, Table, Space, message } from 'antd';
-import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
+import { labsAPI, musterAPI } from '../services/api';
+import type { Lab } from '../types';
+import {
+  Box,
+  Button,
+  Typography,
+  TextField,
+  MenuItem,
+  Stack,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import { Add, Delete, Save, ArrowBack } from '@mui/icons-material';
 
-const { TextArea } = Input;
+interface SimplifiedPC {
+  id: number;
+  device_name: string;
+}
 
 const MusterRegister: React.FC = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [pcs, setPcs] = useState<PC[]>([]);
-  const [selectedLab, setSelectedLab] = useState<number | null>(null);
-  const [form, setForm] = useState<{
-    date: string;
-    time: string;
-    class_name: string;
-    batch: string;
-  }>({
-    date: new Date().toISOString().split('T')[0],
+  const [pcs, setPcs] = useState<SimplifiedPC[]>([]);
+  const [selectedLab, setSelectedLab] = useState<number | ''>('');
+  const [form, setForm] = useState({
+    date: new Date().toISOString().split('T')[0] as string,
     time: '',
     class_name: '',
     batch: '',
   });
-  const [entries, setEntries] = useState<Array<{ sr_no: number; roll_no: string; pc: number | null }>>([{
+  const [entries, setEntries] = useState<Array<{ sr_no: number; roll_no: string; pc: number | '' }>>([{
     sr_no: 1,
     roll_no: '',
-    pc: null,
+    pc: '',
   }]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Fetch labs on mount
@@ -40,7 +51,7 @@ const MusterRegister: React.FC = () => {
       try {
         const data = await labsAPI.getAll();
         setLabs(data);
-      } catch (err) {
+      } catch (err: any) {
         setError('Failed to load labs');
         console.error(err);
       }
@@ -50,12 +61,12 @@ const MusterRegister: React.FC = () => {
 
   // Fetch PCs when lab changes
   useEffect(() => {
-    if (selectedLab !== null) {
+    if (selectedLab) {
       const fetchPCs = async () => {
         try {
-          const data = await musterAPI.getPCsForLab(selectedLab);
+          const data = await musterAPI.getPCsForLab(selectedLab as number);
           setPcs(data);
-        } catch (err) {
+        } catch (err: any) {
           setError('Failed to load PCs for the selected lab');
           console.error(err);
         }
@@ -75,26 +86,23 @@ const MusterRegister: React.FC = () => {
           const data = await musterAPI.getSession(parseInt(sessionId));
           setForm({
             date: data.date,
-            time: data.time,
+            time: data.time?.substring(0, 5) || '',
             class_name: data.class_name,
             batch: data.batch,
           });
           setSelectedLab(data.lab);
-          // Wait for labs to load, then set entries
-          // We'll set entries after labs are loaded and PCs are fetched
-          // We'll use a timeout or check if pcs are loaded, but for simplicity we'll set after a bit
           setEntries(
-            data.entries.map((entry, index) => ({
+            data.entries.map((entry: any) => ({
               sr_no: entry.sr_no,
               roll_no: entry.roll_no,
-              pc: entry.pc,
+              pc: entry.pc || '',
             }))
           );
           setIsEditMode(true);
-          setLoading(false);
-        } catch (err) {
+        } catch (err: any) {
           setError('Failed to load session');
           console.error(err);
+        } finally {
           setLoading(false);
         }
       };
@@ -102,15 +110,12 @@ const MusterRegister: React.FC = () => {
     }
   }, [sessionId]);
 
-  // Handle form changes
-  const handleDateChange = (date: string) => {
-    setForm(prev => ({ ...prev, date }));
-  };
-
+  // Handle time rounding to nearest 30 minutes
   const handleTimeChange = (time: string) => {
-    // Round time to nearest 30 minutes
     if (time) {
-      const [hours, minutes] = time.split(':').map(Number);
+      const parts = time.split(':').map(Number);
+      const hours = parts[0] ?? 0;
+      const minutes = parts[1] ?? 0;
       let roundedMinutes = 0;
       let roundedHours = hours;
       if (minutes < 15) {
@@ -121,319 +126,285 @@ const MusterRegister: React.FC = () => {
         roundedMinutes = 0;
         roundedHours = (hours + 1) % 24;
       }
-      const roundedTime = `${String(roundedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}:00`;
+      const roundedTime = `${String(roundedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
       setForm(prev => ({ ...prev, time: roundedTime }));
     } else {
       setForm(prev => ({ ...prev, time: '' }));
     }
   };
 
-  const handleClassChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, class_name: e.target.value }));
-  };
-
-  const handleBatchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, batch: e.target.value }));
-  };
-
   const handleLabChange = (value: string) => {
-    const labId = value ? parseInt(value) : null;
+    const labId = value ? Number(value) : '';
     setSelectedLab(labId);
-    // Reset entries when lab changes? Or keep them? We'll reset for simplicity.
-    setEntries([{ sr_no: 1, roll_no: '', pc: null }]);
+    setEntries([{ sr_no: 1, roll_no: '', pc: '' }]);
   };
 
-  // Handle entry changes
-  const handleRollNoChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    setEntries(prev => {
-      const newEntries = [...prev];
-      newEntries[index].roll_no = e.target.value;
-      return newEntries;
-    });
-  };
-
-  const handlePcChange = (index: number, value: string) => {
-    const pcId = value ? parseInt(value) : null;
-    setEntries(prev => {
-      const newEntries = [...prev];
-      newEntries[index].pc = pcId;
-      return newEntries;
-    });
-  };
-
-  // Handle add row
+  // Entry management
   const handleAddRow = () => {
     setEntries(prev => [
       ...prev,
-      {
-        sr_no: prev.length + 1,
-        roll_no: '',
-        pc: null,
-      },
+      { sr_no: prev.length + 1, roll_no: '', pc: '' },
     ]);
   };
 
-  // Handle remove row
   const handleRemoveRow = (index: number) => {
-    setEntries(prev => {
-      if (prev.length <= 1) {
-        message.warning('At least one row is required');
-        return prev;
-      }
-      return prev.filter((_, i) => i !== index);
-    });
+    if (entries.length <= 1) {
+      setError('At least one row is required');
+      return;
+    }
+    setEntries(prev =>
+      prev
+        .filter((_, i) => i !== index)
+        .map((e, i) => ({ ...e, sr_no: i + 1 }))
+    );
   };
 
-  // Handle save
+  const handleRollNoChange = (index: number, value: string) => {
+    setEntries(prev => prev.map((e, i) => i === index ? { ...e, roll_no: value } : e));
+  };
+
+  const handlePcChange = (index: number, value: string) => {
+    const pcId = value ? Number(value) : '';
+    setEntries(prev => prev.map((e, i) => i === index ? { ...e, pc: pcId as number | '' } : e));
+  };
+
+  // Save
   const handleSave = async () => {
-    // Validate form
-    if (!form.date || !form.time || !form.class_name || !form.batch || selectedLab === null) {
-      message.error('Please fill in all session details');
+    if (!form.date || !form.time || !form.class_name || !form.batch || !selectedLab) {
+      setError('Please fill in all session details (Date, Time, Lab, Class, Batch)');
       return;
     }
 
-    // Validate entries
-    let valid = true;
-    entries.forEach(entry => {
-      if (!entry.roll_no || entry.pc === null) {
-        valid = false;
-      }
-    });
-    if (!valid) {
-      message.error('Please fill in all fields for each entry (Roll No and PC)');
+    const invalidEntries = entries.some(e => !e.roll_no || !e.pc);
+    if (invalidEntries) {
+      setError('Please fill in Roll No and PC for every entry row');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+    setSaving(true);
+    setError('');
 
     try {
+      const timeForApi = form.time.length === 5 ? `${form.time}:00` : form.time;
+      const mappedEntries = entries.map(e => ({
+        sr_no: e.sr_no,
+        roll_no: e.roll_no,
+        pc: e.pc as number,
+      }));
+
       if (isEditMode && sessionId) {
-        // Update existing session
         await musterAPI.updateSession(parseInt(sessionId), {
           date: form.date,
-          time: form.time,
-          lab: selectedLab,
+          time: timeForApi,
+          lab: selectedLab as number,
           class_name: form.class_name,
           batch: form.batch,
-          entries: entries.map(entry => ({
-            sr_no: entry.sr_no,
-            roll_no: entry.roll_no,
-            pc: entry.pc,
-          })),
+          entries: mappedEntries,
         });
-        message.success('Muster register updated successfully');
+        setSuccess('Muster register updated successfully');
       } else {
-        // Create new session
         const sessionData = await musterAPI.createSession({
           date: form.date,
-          time: form.time,
-          lab: selectedLab,
+          time: timeForApi,
+          lab: selectedLab as number,
           class_name: form.class_name,
           batch: form.batch,
         });
-        const sessionId = sessionData.id;
-        // Save entries for the new session
-        await musterAPI.saveEntries(sessionId, entries.map(entry => ({
-          sr_no: entry.sr_no,
-          roll_no: entry.roll_no,
-          pc: entry.pc,
-        })));
-        message.success('Muster register created successfully');
+        await musterAPI.saveEntries(sessionData.id, mappedEntries);
+        setSuccess('Muster register created successfully');
       }
-      setSuccess(true);
-      // Optionally redirect to list or reset form
-      // navigate(`/muster/list`);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to save muster register');
-      message.error(err.response?.data?.error || 'Failed to save muster register');
       console.error(err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  // Time input placeholder for formatting
-  const timeInputValue = form.time ? form.time.substring(0, 5) : '';
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h2>{isEditMode ? 'Edit Muster Register' : 'New Muster Register'}</h2>
-        <Space>
-          <Button type="default" onClick={() => navigate('/muster/list')}>
-            Back to List
-          </Button>
-        </Space>
-      </div>
+    <Box>
+      {/* Header */}
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
+        <Tooltip title="Back to list">
+          <IconButton onClick={() => navigate('/muster/list')}>
+            <ArrowBack />
+          </IconButton>
+        </Tooltip>
+        <Box>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: '-0.3px' }}>
+            {isEditMode ? 'Edit Muster Register' : 'New Muster Register'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+            {isEditMode ? 'Modify the attendance register session' : 'Create a new attendance register session'}
+          </Typography>
+        </Box>
+      </Stack>
 
-      {error && (
-        <div style={{ backgroundColor: '#fff2f0', border: '1px solid #ffa39e', borderRadius: '4px', padding: '12px', marginBottom: '16px' }}>
-          {error}
-        </div>
-      )}
-      {success && (
-        <div style={{ backgroundColor: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: '4px', padding: '12px', marginBottom: '16px' }}>
-          Muster register saved successfully!
-        </div>
-      )}
-
-      <Form layout="vertical">
-        <Form.Item label="Date">
-          <Input type="date" value={form.date} onChange={e => handleDateChange(e.target.value)} />
-        </Form.Item>
-        <Form.Item label="Time (HH:MM)">
-          <Input
-            type="text"
-            value={timeInputValue}
-            onChange={e => handleTimeChange(e.target.value)}
-            placeholder="HH:MM"
+      {/* Session Details Form */}
+      <div className="rounded-xl border p-6 mb-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Session Details</Typography>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <TextField
+            label="Date"
+            type="date"
+            value={form.date}
+            onChange={(e) => setForm(prev => ({ ...prev, date: e.target.value }))}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            required
           />
-          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-            Time will be rounded to the nearest 30 minutes (e.g., 10:12 → 10:00, 10:18 → 10:30)
-          </span>
-        </Form.Item>
-        <Form.Item label="Lab Name">
-          <Select
-            showSearch
-            placeholder="Select a lab"
-            allowClear
-            value={selectedLab ?? null}
-            onChange={handleLabChange}
+          <TextField
+            label="Time (HH:MM)"
+            type="time"
+            value={form.time}
+            onChange={(e) => handleTimeChange(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            required
+            helperText="Rounded to nearest 30 min"
+          />
+          <TextField
+            select
+            label="Lab"
+            value={selectedLab}
+            onChange={(e) => handleLabChange(e.target.value)}
+            fullWidth
+            required
           >
+            <MenuItem value="">Select Lab</MenuItem>
             {labs.map(lab => (
-              <Select.Option key={lab.id} value={lab.id}>
-                {lab.name}
-              </Select.Option>
+              <MenuItem key={lab.id} value={lab.id}>{lab.name}</MenuItem>
             ))}
-          </Select>
-        </Form.Item>
-        <Form.Item label="Class">
-          <Input
+          </TextField>
+          <TextField
+            label="Class"
             value={form.class_name}
-            onChange={handleClassChange}
-            placeholder="Enter class (e.g., SE Computer)"
+            onChange={(e) => setForm(prev => ({ ...prev, class_name: e.target.value }))}
+            placeholder="e.g., SE Computer"
+            fullWidth
+            required
           />
-        </Form.Item>
-        <Form.Item label="Batch">
-          <Input
+          <TextField
+            label="Batch"
             value={form.batch}
-            onChange={handleBatchChange}
-            placeholder="Enter batch (e.g., Batch A)"
+            onChange={(e) => setForm(prev => ({ ...prev, batch: e.target.value }))}
+            placeholder="e.g., Batch A"
+            fullWidth
+            required
           />
-        </Form.Item>
-      </Form>
-
-      <div style={{ margin: '24px 0' }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddRow} style={{ marginRight: '8px' }}>
-          Add Row
-        </Button>
+        </div>
       </div>
 
-      <Table
-        columns={[
-          {
-            title: 'Sr. No.',
-            dataIndex: 'sr_no',
-            key: 'sr_no',
-            width: 80,
-            renderText: (text) => text.toString(),
-          },
-          {
-            title: 'Roll No.',
-            dataIndex: 'roll_no',
-            key: 'roll_no',
-            width: 150,
-            render: (_, record) => (
-              <Input
-                value={record.roll_no}
-                onChange={e => handleRollNoChange(record.sr_no - 1, e)}
-                style={{ width: '100%' }}
-              />
-            ),
-          },
-          {
-            title: 'PC Name',
-            dataIndex: 'pc',
-            key: 'pc',
-            width: 200,
-            render: (_, record) => (
-              <Select
-                showSearch
-                placeholder="Select a PC"
-                allowClear
-                value={record.pc ?? null}
-                onChange={e => handlePcChange(record.sr_no - 1, e.target.value)}
-                style={{ width: '100%' }}
-              >
-                {pcs.map(pc => (
-                  <Select.Option key={pc.id} value={pc.id}>
-                    {pc.device_name}
-                  </Select.Option>
-                ))}
-              </Select>
-            ),
-          },
-          {
-            title: 'Actions',
-            dataIndex: 'actions',
-            key: 'actions',
-            width: 100,
-            render: (_, record, index) => (
-              <Button
-                type="danger"
-                icon={<DeleteOutlined />}
-                size="small"
-                onClick={() => handleRemoveRow(index)}
-                danger
-              >
-                Delete
-              </Button>
-            ),
-          },
-        ]}
-        dataSource={entries}
-        rowKey="sr_no"
-        bordered
-        size="middle"
-      />
+      {/* Entries */}
+      <div className="rounded-xl border overflow-hidden mb-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-color)' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Student Entries</Typography>
+          <Button variant="outlined" startIcon={<Add />} onClick={handleAddRow} size="small">
+            Add Row
+          </Button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[var(--bg-main)] text-[var(--text-secondary)] text-xs uppercase font-semibold">
+              <tr>
+                <th className="px-6 py-4 whitespace-nowrap w-20">Sr. No</th>
+                <th className="px-6 py-4 whitespace-nowrap">Roll No</th>
+                <th className="px-6 py-4 whitespace-nowrap">PC</th>
+                <th className="px-6 py-4 whitespace-nowrap text-right w-24">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-color)]">
+              {entries.map((entry, idx) => (
+                <tr key={idx} className="hover:bg-[var(--bg-main)] transition-colors">
+                  <td className="px-6 py-3 text-sm text-[var(--text-primary)] font-medium">{entry.sr_no}</td>
+                  <td className="px-6 py-3">
+                    <TextField
+                      value={entry.roll_no}
+                      onChange={(e) => handleRollNoChange(idx, e.target.value)}
+                      placeholder="Enter roll number"
+                      size="small"
+                      fullWidth
+                    />
+                  </td>
+                  <td className="px-6 py-3">
+                    <TextField
+                      select
+                      value={entry.pc}
+                      onChange={(e) => handlePcChange(idx, e.target.value)}
+                      size="small"
+                      fullWidth
+                      disabled={!selectedLab}
+                    >
+                      <MenuItem value="">Select PC</MenuItem>
+                      {pcs.map(pc => (
+                        <MenuItem key={pc.id} value={pc.id}>{pc.device_name}</MenuItem>
+                      ))}
+                    </TextField>
+                  </td>
+                  <td className="px-6 py-3 text-right">
+                    <Tooltip title="Remove row">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleRemoveRow(idx)}
+                        disabled={entries.length <= 1}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      <div style={{ marginTop: '24px', textAlign: 'right' }}>
+      {/* Save / Reset */}
+      <Stack direction="row" spacing={2} justifyContent="flex-end">
         <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          loading={loading}
-          onClick={handleSave}
-          disabled={loading}
-        >
-          {isEditMode ? 'Update Register' : 'Save Register'}
-        </Button>
-        <Button
-          type="default"
+          variant="outlined"
           onClick={() => {
             if (isEditMode && sessionId) {
-              navigate(`/muster/list`);
+              navigate('/muster/list');
             } else {
-              // Reset form for new entry
-              setForm({
-                date: new Date().toISOString().split('T')[0],
-                time: '',
-                class_name: '',
-                batch: '',
-              });
-              setSelectedLab(null);
-              setEntries([{ sr_no: 1, roll_no: '', pc: null }]);
+              setForm({ date: new Date().toISOString().split('T')[0] as string, time: '', class_name: '', batch: '' });
+              setSelectedLab('');
+              setEntries([{ sr_no: 1, roll_no: '', pc: '' }]);
               setIsEditMode(false);
-              setSuccess(false);
-              setError(null);
+              setSuccess('');
+              setError('');
             }
           }}
         >
           {isEditMode ? 'Cancel' : 'Reset'}
         </Button>
-      </div>
-    </div>
+        <Button
+          variant="contained"
+          startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <Save />}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {isEditMode ? 'Update Register' : 'Save Register'}
+        </Button>
+      </Stack>
+
+      {/* Alerts */}
+      <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
+        <Alert severity="error" onClose={() => setError('')} variant="filled">{error}</Alert>
+      </Snackbar>
+      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
+        <Alert severity="success" onClose={() => setSuccess('')} variant="filled">{success}</Alert>
+      </Snackbar>
+    </Box>
   );
 };
 

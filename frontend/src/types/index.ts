@@ -19,7 +19,7 @@ export interface PC {
   lab: number;
   name?: string;
   pc_code: string;
-  device_name?: string;
+  device_name: string;
   product_id?: string;
   processor?: string;
   ram?: string;
@@ -28,8 +28,6 @@ export interface PC {
   connected: boolean;
   gpu: boolean;
   peripherals: boolean;
-  device_name: string;
-  status: string;
   brand?: string;
   serial_number?: string;
   created_at: string;
@@ -185,22 +183,26 @@ export interface Inventory {
   under_repair_quantity: number;
   lab: number;
 }
+
 export interface LoginRequest {
   username: string;
   password: string;
 }
+
 export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
   role: 'admin' | 'student';
 }
+
 export interface AuthResponse {
   access: string;
   refresh: string;
   role?: 'admin' | 'student';
   username?: string;
 }
+
 export interface Ticket {
   id: number;
   title: string;
@@ -254,4 +256,12 @@ export interface MusterEntry {
   roll_no: string;
   pc: number;
   pc_name: string;
+}
+
+export interface MusterSessionCreate {
+  date: string;
+  time: string;
+  lab: number;
+  class_name: string;
+  batch: string;
 }

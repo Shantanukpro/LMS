@@ -3,8 +3,5 @@
     "python.analysis.extraPaths": [
         "c:\\LMS\\LMS\\backend\\LMS",
         "c:\\LMS\\LMS\\backend\\venv\\Lib\\site-packages"
-    ],
-    "css.lint.unknownAtRules": "ignore",
-    "scss.lint.unknownAtRules": "ignore",
-    "less.lint.unknownAtRules": "ignore"
+    ]
 }

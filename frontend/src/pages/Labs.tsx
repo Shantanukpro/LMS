@@ -11,7 +11,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Grid,
   IconButton,
   InputAdornment,
   Snackbar,
@@ -22,6 +21,7 @@ import {
   Tooltip,
   CircularProgress,
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import { Add, Delete, Edit, Refresh, Search } from '@mui/icons-material';
 import { labsAPI } from '../services/api';
 import type { Lab } from '../types';
@@ -53,9 +53,7 @@ const Labs: React.FC = () => {
     try {
       setLoading(true);
       const data = await labsAPI.getAll();
-      // Extract results from paginated response
-      const labsArray = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
-      setLabs(labsArray);
+      setLabs(data);
       setError('');
     } catch (e: any) {
       console.error('Failed to load labs:', e);
@@ -202,7 +200,7 @@ const Labs: React.FC = () => {
       ) : (
         <Grid container spacing={3}>
           {filteredLabs.map((lab) => (
-            <Grid item xs={12} sm={6} md={4} key={lab.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={lab.id}>
               <Card
                 sx={{
                   height: '100%',

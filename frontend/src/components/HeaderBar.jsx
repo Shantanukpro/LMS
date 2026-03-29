@@ -14,7 +14,7 @@ const HeaderBar = () => {
     navigate('/login');
   };
 
-  const handleMusterClick = () => console.log('Muster clicked');
+  const handleMusterClick = () => navigate('/muster/register');
   const handleNotificationsClick = () => {
     console.log('Notifications clicked');
     setUnreadNotifications(0);

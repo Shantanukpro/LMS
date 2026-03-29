@@ -3,16 +3,10 @@ import type {
   User, Lab, PC, LabEquipment, NetworkEquipmentDetails, ServerDetails,
   ProjectorDetails, ElectricalApplianceDetails, CPU, OS, Peripheral, Software, 
   MaintenanceLog, ImportResult, BulkImportRequest, MaintenanceNotification,
-  LoginRequest, RegisterRequest, AuthResponse 
-  User, Lab, PC, Equipment, Software, MaintenanceLog, Inventory,
-  LoginRequest, RegisterRequest, AuthResponse,
-  MusterSession, MusterSessionCreate, MusterEntryhttps://github.com/Shantanukpro/LMS/pull/4/conflict?name=frontend%252Fsrc%252Ftypes%252Findex.ts&ancestor_oid=642a463e7b010689f94db3462a4c92ebc9926861&base_oid=a6f652ca116da541b04fd11c24d5fbe2067dfeb3&head_oid=a31934ebd0a5fa4e027f03975738bc19bd6c5107
+  LoginRequest, RegisterRequest, AuthResponse, MusterSession, MusterSessionCreate, MusterEntry
 } from '../types';
 
-// We'll define the Muster types in types.ts later, but for now use any or extend types.
-// For simplicity, we'll use any and update types.ts separately if needed.
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 // Helper to extract results from DRF paginated responses
 const extractResults = <T>(data: any): T[] => {
@@ -56,49 +50,83 @@ export const ticketsAPI = {
     return response.data;
   },
 };
+
 const clearTokens = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
 };
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and logging
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Debug Logging
+  console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
   return config;
+}, (error) => {
+  console.error('[API Request Error]', error);
+  return Promise.reject(error);
 });
 
-// Response interceptor to handle token refresh
+// Response interceptor to handle token refresh and global errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Debug Logging
+    console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    // Global Error Logger & Formatting
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+      console.error(`[API Error Response] Status: ${status}`, data);
       
-      const refreshToken = getRefreshToken();
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_BASE_URL}/token/refresh/`, {
-            refresh: refreshToken,
-          });
-          const { access } = response.data;
-          setTokens(access, refreshToken);
-          originalRequest.headers.Authorization = `Bearer ${access}`;
-          return api(originalRequest);
-        } catch (refreshError) {
+      let errMsg = 'An unexpected error occurred';
+      if (typeof data === 'string') errMsg = data;
+      else if (data?.detail) errMsg = data.detail;
+      else if (data?.error) errMsg = data.error;
+      else if (data?.message) errMsg = data.message;
+      else if (status === 400 && typeof data === 'object') {
+        errMsg = Object.values(data).flat().join(', ');
+      }
+      
+      error.formattedMessage = errMsg;
+
+      if (status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        
+        const refreshToken = getRefreshToken();
+        if (refreshToken) {
+          try {
+            const response = await axios.post(`${API_BASE_URL}/token/refresh/`, {
+              refresh: refreshToken,
+            });
+            const { access } = response.data;
+            setTokens(access, refreshToken);
+            originalRequest.headers.Authorization = `Bearer ${access}`;
+            return api(originalRequest);
+          } catch (refreshError) {
+            clearTokens();
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+          }
+        } else {
           clearTokens();
           window.location.href = '/login';
-          return Promise.reject(refreshError);
+          return Promise.reject(error);
         }
-      } else {
-        clearTokens();
-        window.location.href = '/login';
-        return Promise.reject(error);
       }
+    } else if (error.request) {
+      console.error('[API Network Error] Server not reachable', error.request);
+      error.formattedMessage = 'Server not reachable. Please check your connection or backend server.';
+    } else {
+      console.error('[API Setup Error]', error.message);
+      error.formattedMessage = error.message;
     }
     
     return Promise.reject(error);
@@ -108,8 +136,7 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    // Use users app login to receive role and username along with tokens
-    const response = await api.post('/users/login/', data);
+    const response = await api.post('/token/', data);
     return response.data;
   },
   
@@ -174,22 +201,10 @@ export const labEquipmentAPI = {
   },
 
   update: async (id: number, data: Partial<LabEquipment>): Promise<LabEquipment> => {
-  
-  getByLab: async (labId: number): Promise<any[]> => {
-    const all = await labEquipmentAPI.getAll();
-    return all.filter((e) => e.lab === labId);
-  },
-  
-  create: async (data: any): Promise<any> => {
-    const response = await api.post('/lab-equipment/', data);
-    return response.data;
-  },
-  
-  update: async (id: number, data: any): Promise<any> => {
     const response = await api.patch(`/lab-equipment/${id}/`, data);
     return response.data;
   },
-  
+
   delete: async (id: number): Promise<void> => {
     await api.delete(`/lab-equipment/${id}/`);
   },
@@ -290,24 +305,6 @@ export const pcsAPI = {
 
   deletePeripheral: async (id: number): Promise<void> => {
     await api.delete(`/peripherals/${id}/`);
-  
-  getById: async (id: number): Promise<Equipment> => {
-    const response = await api.get(`/equipment/${id}/`);
-    return response.data;
-  },
-  
-  create: async (data: Omit<Equipment, 'id' | 'added_on' | 'updated_at'>): Promise<Equipment> => {
-    const response = await api.post('/equipment/', data);
-    return response.data;
-  },
-  
-  update: async (id: number, data: Partial<Equipment>): Promise<Equipment> => {
-    const response = await api.patch(`/equipment/${id}/`, data);
-    return response.data;
-  },
-  
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/equipment/${id}/`);
   },
 };
 

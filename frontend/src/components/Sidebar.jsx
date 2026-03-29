@@ -39,6 +39,7 @@ const Sidebar = () => {
     >
       {/* Navigation links */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 space-y-0.5 scrollbar-hide">
+        {/* eslint-disable-next-line no-unused-vars */}
         {menuItems.map(({ name, icon: Icon, path }) => {
           const active =
             location.pathname === path ||

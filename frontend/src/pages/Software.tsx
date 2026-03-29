@@ -225,7 +225,7 @@ const Software: React.FC = () => {
             <TextField select label="PC" value={fPc} onChange={(e) => setFPc(e.target.value === '' ? '' : Number(e.target.value))} sx={{ minWidth: 180 }}>
               <MenuItem value="">All</MenuItem>
               {pcsForLab(fLab).map((p) => (
-                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                <MenuItem key={p.id} value={p.id}>{p.device_name}</MenuItem>
               ))}
             </TextField>
             <Tooltip title="Refresh">
@@ -278,7 +278,7 @@ const Software: React.FC = () => {
                   >
                     <td className="px-6 py-4 text-sm whitespace-nowrap text-[var(--text-secondary)]">
                       <div className="font-medium text-[var(--text-primary)]">
-                        {pcs.find((p) => p.id === row.pc)?.name || row.pc}
+                        {pcs.find((p) => p.id === row.pc)?.device_name || row.pc}
                       </div>
                       <div className="text-xs mt-0.5">
                         {labs.find((l) => l.id === pcToLab(row.pc))?.name || pcToLab(row.pc) || 'Unknown Lab'}
@@ -346,7 +346,7 @@ const Software: React.FC = () => {
                 </TextField>
                 <TextField select label="PC" value={formData.pc} onChange={(e) => setFormData({ ...formData, pc: e.target.value === '' ? '' : Number(e.target.value) })} required fullWidth>
                   {pcsForLab(fLab).map((p) => (
-                    <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                    <MenuItem key={p.id} value={p.id}>{p.device_name}</MenuItem>
                   ))}
                 </TextField>
               </Stack>

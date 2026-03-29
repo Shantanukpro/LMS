@@ -19,11 +19,7 @@ import {
   DialogContent,
   DialogActions,
   InputAdornment,
-  Chip,
-  Divider,
-  CardActions,
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
 import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
 import { labEquipmentAPI, labsAPI } from '../services/api';
 import type { LabEquipment, Lab } from '../types';

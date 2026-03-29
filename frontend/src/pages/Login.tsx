@@ -37,7 +37,7 @@ const Login: React.FC = () => {
       await login({ username, password });
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please try again.');
+      setError(err.formattedMessage || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
