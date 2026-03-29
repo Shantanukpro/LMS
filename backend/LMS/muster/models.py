@@ -1,6 +1,5 @@
 from django.db import models
 from labs.models import Lab, PC
-from django.contrib.auth.models import User
 
 class MusterSession(models.Model):
     date = models.DateField()

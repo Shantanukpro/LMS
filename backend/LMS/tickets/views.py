@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions
+from rest_framework.exceptions import PermissionDenied
 from .models import Ticket
 from .serializers import TicketSerializer
 
@@ -8,7 +9,7 @@ class TicketCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         if self.request.user.role != 'student':
-            raise PermissionError("Only students can raise tickets")
+            raise PermissionDenied("Only students can raise tickets.")
         serializer.save(student=self.request.user)
 
 class TicketListView(generics.ListAPIView):

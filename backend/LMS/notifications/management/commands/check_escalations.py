@@ -44,8 +44,18 @@ class Command(BaseCommand):
                     continue
 
                 days_old = (timezone.now() - log.reported_on).days
+                # Determine the target device name
+                if log.pc:
+                    device = f'PC: {log.pc.device_name}'
+                elif log.lab_equipment:
+                    device = f'Equipment: {log.lab_equipment.name}'
+                elif log.peripheral:
+                    device = f'Peripheral: {log.peripheral.peripheral_type}'
+                else:
+                    device = 'Unknown device'
+
                 message = (
-                    f'Maintenance issue on {log.equipment} (Lab: {log.lab}) '
+                    f'Maintenance issue on {device} (Lab: {log.lab}) '
                     f'has been pending for {days_old} days. '
                     f'Reported by {log.reported_by or "unknown"}.'
                 )

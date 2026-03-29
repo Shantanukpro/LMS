@@ -8,7 +8,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from .views import RegisterView,BulkImportAPIView,bulk_import_test_ui
+from .views import BulkImportAPIView, bulk_import_test_ui
 
 urlpatterns = [
     # Root redirect to API
@@ -26,8 +26,7 @@ urlpatterns = [
     # API endpoints
     path('api/', include('labs.urls')),
 
-    # Authentication endpoints
-    path('api/register/', RegisterView.as_view(), name='register'),
+    # Authentication endpoints (Simple JWT defaults)
     path('api/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 

@@ -13,16 +13,13 @@ def send_maintenance_sms(request_data):
     """
     Sends an SMS notification for a maintenance request.
 
-    This is a prototype implementation that mirrors email_service.py.
-    It will later be connected to a Django post_save signal.
-
     Args:
         request_data (dict): Dictionary containing:
             - id: Request ID
             - lab: Lab Name/ID
             - issue_description: Details of the issue
             - created_at: Timestamp
-            - technician_phone: Recipient phone number (E.164 format, e.g. +1234567890)
+            - admin_phone: Recipient phone number (E.164 format, e.g. +1234567890)
     """
     body = (
         f"LMS Maintenance Alert\n"
@@ -33,7 +30,7 @@ def send_maintenance_sms(request_data):
     )
 
     from_phone = getattr(settings, 'TWILIO_PHONE_NUMBER', '')
-    to_phone = request_data['technician_phone']
+    to_phone = request_data['admin_phone']
 
     # Console mode for development — just print instead of sending
     sms_backend = getattr(settings, 'SMS_BACKEND', 'console')

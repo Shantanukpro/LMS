@@ -49,10 +49,10 @@ def unread_count(request):
 def send_sms_notification(request):
     """
     POST /api/notifications/send-sms/
-    Body: { "id", "lab", "issue_description", "created_at", "technician_phone" }
+    Body: { "id", "lab", "issue_description", "created_at", "admin_phone" }
     Sends an SMS notification for a maintenance request.
     """
-    required_fields = ['id', 'lab', 'issue_description', 'created_at', 'technician_phone']
+    required_fields = ['id', 'lab', 'issue_description', 'created_at', 'admin_phone']
     missing = [f for f in required_fields if f not in request.data]
     if missing:
         return Response(

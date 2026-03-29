@@ -1,21 +1,12 @@
-from rest_framework import generics, permissions
-from .serializers import UserSerializer
-from labs.models import User
-
-class RegisterView(generics.CreateAPIView):
-    """
-    API endpoint for user registration.
-    Allows anyone to create a new user account.
-    """
-    queryset = User.objects.all()
-    permission_classes = (permissions.AllowAny,)
-    serializer_class = UserSerializer
-
-from rest_framework.views import APIView
+from rest_framework import generics, permissions, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.views import APIView
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+
+from labs.models import Lab
 from labs.importers import import_labs, import_pcs, import_lab_equipment
 
 
@@ -23,7 +14,7 @@ class BulkImportAPIView(APIView):
     """
     POST multipart/form-data:
       - file: CSV or XLSX
-      - entity: labs | pcs | equipment
+      - entity: labs | pcs | lab-equipment
 
     Requires JWT auth.
     Only admin users can import.
@@ -53,7 +44,10 @@ class BulkImportAPIView(APIView):
             if entity == "labs":
                 created, skipped, errors = import_labs(file)
             elif entity == "pcs":
-                created, skipped, errors = import_pcs(file)
+                result = import_pcs(file)
+                created = result['created']
+                skipped = result['skipped']
+                errors = result['errors']
             elif entity == "lab-equipment":
                 created, skipped, errors = import_lab_equipment(file)
             else:
@@ -78,12 +72,9 @@ class BulkImportAPIView(APIView):
                 {"detail": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-    
+
+
 # TEMPORARY browser test UI (no DRF)
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from labs.importers import import_pcs
-from labs.models import Lab
 @login_required
 def bulk_import_test_ui(request):
     result = None
@@ -106,4 +97,3 @@ def bulk_import_test_ui(request):
                 result = {"error": str(e)}
 
     return render(request, "labs/bulk_import_test.html", {"result": result, "labs": labs})
-

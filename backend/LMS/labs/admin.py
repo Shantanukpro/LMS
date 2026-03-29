@@ -1,8 +1,8 @@
 from django.contrib import admin
 from .models import (
-    User, Lab, PC, LabEquipment, NetworkEquipmentDetails, ServerDetails,
-    ProjectorDetails, ElectricalApplianceDetails, Peripheral, Software,
-    MaintenanceLog, LabEquipment, CPU, OS
+    User, Lab, PC, CPU, OS, Peripheral, Software,
+    LabEquipment, NetworkEquipmentDetails, ServerDetails,
+    ProjectorDetails, ElectricalApplianceDetails, MaintenanceLog
 )
 
 ### Inline editing for LabEquipment under Lab admin (Lab -> LabEquipment)
