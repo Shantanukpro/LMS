@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('labs', '0003_alter_peripheral_unique_together'),
+        ('labs', '0002_alter_maintenancelog_options_alter_pc_options_and_more'),
     ]
 
     operations = [

@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('labs', '0003_alter_peripheral_unique_together'),
+        ('labs', '0003_alter_maintenancelog_status'),
         ('notifications', '0001_initial'),
         ('tickets', '0001_initial'),
     ]

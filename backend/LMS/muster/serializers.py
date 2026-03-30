@@ -4,22 +4,28 @@ from .models import MusterSession, MusterEntry
 
 class MusterEntrySerializer(serializers.ModelSerializer):
     pc = serializers.PrimaryKeyRelatedField(queryset=PC.objects.all())
+    total_price = serializers.ReadOnlyField()
+
     class Meta:
         model = MusterEntry
-        fields = ['id', 'sr_no', 'roll_no', 'pc']
+        fields = ['id', 'sr_no', 'roll_no', 'pc', 'usage_price', 'total_price']
 
 class MusterSessionSerializer(serializers.ModelSerializer):
     lab = serializers.PrimaryKeyRelatedField(queryset=Lab.objects.all())
     entries = MusterEntrySerializer(many=True)
+    total_price = serializers.ReadOnlyField()
+
     class Meta:
         model = MusterSession
-        fields = ['id', 'date', 'time', 'lab', 'class_name', 'batch', 'created_at', 'entries']
+        fields = ['id', 'date', 'time', 'lab', 'class_name', 'batch', 'created_at', 'entries', 'total_price']
+
     def create(self, validated_data):
         entries_data = validated_data.pop('entries')
         session = MusterSession.objects.create(**validated_data)
         for entry_data in entries_data:
             MusterEntry.objects.create(session=session, **entry_data)
         return session
+
     def update(self, instance, validated_data):
         entries_data = validated_data.pop('entries', None)
         for attr, value in validated_data.items():

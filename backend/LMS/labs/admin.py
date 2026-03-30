@@ -59,9 +59,13 @@ class LabAdmin(admin.ModelAdmin):
 # --------------------------
 @admin.register(PC)
 class PCAdmin(admin.ModelAdmin):
-    list_display = ('device_name', 'lab', 'brand', 'status', 'connected', 'gpu')
+    list_display = ('device_name', 'lab', 'brand', 'base_price', 'total_price_display', 'status', 'connected')
     list_filter = ('lab', 'status', 'connected')
     search_fields = ('device_name', 'lab__name', 'brand', 'serial_number')
+
+    def total_price_display(self, obj):
+        return f"₹{obj.total_price:.2f}"
+    total_price_display.short_description = 'Total Price'
 
 
 # --------------------------
@@ -69,7 +73,7 @@ class PCAdmin(admin.ModelAdmin):
 # --------------------------
 @admin.register(CPU)
 class CPUAdmin(admin.ModelAdmin):
-    list_display = ('model', 'pc', 'clock_speed', 'core_count', 'integrated_graphics')
+    list_display = ('model', 'pc', 'clock_speed', 'core_count', 'price', 'integrated_graphics')
     list_filter = ('integrated_graphics',)
     search_fields = ('model', 'pc__device_name')
 
@@ -79,7 +83,7 @@ class CPUAdmin(admin.ModelAdmin):
 # --------------------------
 @admin.register(OS)
 class OSAdmin(admin.ModelAdmin):
-    list_display = ('name', 'version', 'pc', 'architecture', 'expiration_date')
+    list_display = ('name', 'version', 'pc', 'architecture', 'license_cost', 'expiration_date')
     list_filter = ('architecture',)
     search_fields = ('name', 'version', 'pc__device_name')
 
@@ -89,7 +93,7 @@ class OSAdmin(admin.ModelAdmin):
 # --------------------------
 @admin.register(Peripheral)
 class PeripheralAdmin(admin.ModelAdmin):
-    list_display = ('peripheral_type', 'brand', 'model_name', 'pc', 'status')
+    list_display = ('peripheral_type', 'brand', 'model_name', 'pc', 'price', 'status')
     list_filter = ('peripheral_type', 'status')
     search_fields = ('brand', 'model_name', 'pc__device_name')
 
@@ -109,11 +113,15 @@ class SoftwareAdmin(admin.ModelAdmin):
 # --------------------------
 @admin.register(LabEquipment)
 class LabEquipmentAdmin(admin.ModelAdmin):
-    list_display = ('equipment_code', 'name', 'equipment_type', 'category', 'lab', 'quantity', 'status')
+    list_display = ('equipment_code', 'name', 'equipment_type', 'category', 'lab', 'unit_price', 'quantity', 'total_price_display', 'status')
     list_filter = ('category', 'equipment_type', 'status', 'lab')
     search_fields = ('equipment_code', 'name', 'brand', 'model_name', 'lab__name')
     ordering = ('equipment_code',)
     inlines = [NetworkEquipmentDetailsInline, ServerDetailsInline, ProjectorDetailsInline, ElectricalApplianceDetailsInline]
+
+    def total_price_display(self, obj):
+        return f"₹{obj.total_price:.2f}"
+    total_price_display.short_description = 'Total Price'
 
 
 # --------------------------

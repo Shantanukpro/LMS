@@ -51,6 +51,7 @@ class PCSerializer(serializers.ModelSerializer):
     os = OSSerializer(read_only=True)
     peripheral_devices = PeripheralSerializer(many=True, required=False)
     installed_software = SoftwareSerializer(many=True, read_only=True)
+    total_price = serializers.ReadOnlyField()
 
     class Meta:
         model = PC
@@ -134,6 +135,7 @@ class LabEquipmentSerializer(serializers.ModelSerializer):
     server_details = ServerDetailsSerializer(read_only=True)
     projector_details = ProjectorDetailsSerializer(read_only=True)
     electrical_details = ElectricalApplianceDetailsSerializer(read_only=True)
+    total_price = serializers.ReadOnlyField()
 
     class Meta:
         model = LabEquipment
@@ -141,6 +143,8 @@ class LabEquipmentSerializer(serializers.ModelSerializer):
 
 
 class LabEquipmentListSerializer(serializers.ModelSerializer):
+    total_price = serializers.ReadOnlyField()
+
     class Meta:
         model = LabEquipment
         fields = '__all__'

@@ -70,6 +70,7 @@ class PC(models.Model):
     peripherals = models.BooleanField(default=False, help_text="Peripherals tracked")
     brand = models.CharField(max_length=100, blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
+    base_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)], help_text="Base PC cost before components")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,6 +82,17 @@ class PC(models.Model):
         ]
         unique_together = ('lab', 'device_name')
         ordering = ['device_name']
+
+    @property
+    def total_price(self):
+        total = self.base_price or 0
+        if hasattr(self, 'cpu') and self.cpu:
+            total += self.cpu.price or 0
+        if hasattr(self, 'os') and self.os:
+            total += self.os.license_cost or 0
+        peripherals_total = sum(p.price or 0 for p in self.peripheral_devices.all())
+        total += peripherals_total
+        return total
 
     def __str__(self):
         return self.device_name
@@ -99,6 +111,7 @@ class CPU(models.Model):
     clock_speed = models.CharField(max_length=50, blank=True, null=True, help_text="e.g., 3.6 GHz")
     core_count = models.IntegerField(blank=True, null=True, help_text="Number of cores")
     integrated_graphics = models.BooleanField(default=False)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)], help_text="CPU unit price")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -131,6 +144,7 @@ class OS(models.Model):
     expiration_date = models.DateField(blank=True, null=True, help_text="License expiration date")
     architecture = models.CharField(max_length=20, choices=ARCHITECTURE_CHOICES, default='64-bit')
     product_key = models.CharField(max_length=200, blank=True, null=True, help_text="License key")
+    license_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)], help_text="OS license cost")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -168,6 +182,7 @@ class Peripheral(models.Model):
     model_name = models.CharField(max_length=100, blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='working')
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)], help_text="Peripheral unit price")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -255,6 +270,7 @@ class LabEquipment(models.Model):
     installation_date = models.DateField(blank=True, null=True)
     location_in_lab = models.CharField(max_length=200, blank=True, null=True, help_text="Wall A, Rack 2, Ceiling, etc.")
     remarks = models.TextField(blank=True, null=True)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)], help_text="Price per single unit")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -268,6 +284,10 @@ class LabEquipment(models.Model):
         ]
         unique_together = ('lab', 'equipment_code')
         ordering = ['equipment_code']
+
+    @property
+    def total_price(self):
+        return (self.unit_price or 0) * self.quantity
 
     def __str__(self):
         return f"{self.equipment_code} - {self.name} ({self.equipment_type})"
