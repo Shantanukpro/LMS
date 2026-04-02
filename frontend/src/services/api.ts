@@ -408,7 +408,8 @@ export const importAPI = {
   importLabs: async (file: File): Promise<ImportResult> => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post('/import/labs/', formData, {
+    formData.append('entity', 'labs');
+    const response = await api.post('/import/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
@@ -417,10 +418,11 @@ export const importAPI = {
   importPCs: async (file: File, labId?: number): Promise<ImportResult> => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('entity', 'pcs');
     if (labId) {
       formData.append('lab_id', labId.toString());
     }
-    const response = await api.post('/import/pcs/', formData, {
+    const response = await api.post('/import/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
@@ -429,10 +431,11 @@ export const importAPI = {
   importLabEquipment: async (file: File, labId?: number): Promise<ImportResult> => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('entity', 'lab-equipment');
     if (labId) {
       formData.append('lab_id', labId.toString());
     }
-    const response = await api.post('/import/lab-equipment/', formData, {
+    const response = await api.post('/import/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;

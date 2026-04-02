@@ -21,8 +21,9 @@ import {
   Link as MLink,
   MenuItem,
 } from '@mui/material';
-import { Add, ArrowBack, Delete, Edit, Refresh } from '@mui/icons-material';
-import { labsAPI, pcsAPI } from '../services/api';
+import { Add, ArrowBack, Delete, Edit, Refresh, Upload } from '@mui/icons-material';
+import { labsAPI, pcsAPI, importAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import type { Lab, PC } from '../types';
 
 const emptyPC = { 
@@ -64,11 +65,15 @@ const LabDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const labId = Number(id);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [lab, setLab] = useState<Lab | null>(null);
   const [pcs, setPcs] = useState<PC[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [importing, setImporting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
@@ -224,6 +229,44 @@ const LabDetail: React.FC = () => {
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Reset file input for re-selection
+    e.target.value = '';
+    
+    try {
+      setImporting(true);
+      setError('');
+      const result = await importAPI.importPCs(file, labId);
+      
+      const createdCount = result.created ?? 0;
+      const skippedCount = result.skipped ?? 0;
+      const errorCount = result.errors?.length ?? 0;
+      
+      setSuccess(`${createdCount} PCs imported successfully. ${skippedCount} skipped. ${errorCount} errors.`);
+      
+      // Show detailed errors if any
+      if (result.errors && result.errors.length > 0) {
+        console.warn('Import errors:', result.errors);
+      }
+      
+      // Refresh the PC list
+      await loadAll();
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      const msg = err?.response?.data?.detail || err?.formattedMessage || 'Import failed';
+      setError(msg);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const rows = useMemo(() => pcs, [pcs]);
 
   return (
@@ -258,6 +301,25 @@ const LabDetail: React.FC = () => {
                   </IconButton>
                 </span>
               </Tooltip>
+              {isAdmin && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".csv,.xlsx,.xls"
+                    style={{ display: 'none' }}
+                    onChange={handleFileSelect}
+                  />
+                  <Button
+                    variant="contained"
+                    startIcon={importing ? <CircularProgress size={18} color="inherit" /> : <Upload />}
+                    onClick={handleImportClick}
+                    disabled={importing}
+                  >
+                    {importing ? 'Importing...' : 'Import PCs'}
+                  </Button>
+                </>
+              )}
               <Button variant="contained" startIcon={<Add />} onClick={handleOpenCreate}>Add PC</Button>
             </Stack>
           </Box>

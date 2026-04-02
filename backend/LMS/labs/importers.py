@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 from django.db import transaction
-from labs.models import Lab, PC, LabEquipment, NetworkEquipmentDetails, ServerDetails, ProjectorDetails, ElectricalApplianceDetails
+from labs.models import Lab, PC, CPU, Peripheral, LabEquipment, NetworkEquipmentDetails, ServerDetails, ProjectorDetails, ElectricalApplianceDetails
 
 
 ALLOWED_EQUIPMENT_TYPES = [c[0] for c in LabEquipment.EQUIPMENT_TYPES]
@@ -138,8 +138,15 @@ def import_labs(file):
 @transaction.atomic
 def import_pcs(file, lab_id=None):
     """
-    Import PCs from file.
-    Expected columns: device_name (or name, pc_name), status, brand, etc.
+    Import PCs from file with CPU and Peripheral (keyboard/mouse) data.
+    
+    Expected columns:
+      PC fields: pc_name/device_name, product_id, brand, status, network/connected,
+                 basic_processor_info/processor, ram_capacity/ram, storage_capacity/storage,
+                 graphics_card/gpu, serial_number
+      CPU fields: cpu_model, clock_speed, core_count, integrated_graphics
+      Peripheral fields: keyboard_status, mouse_status
+    
     Returns: dict with lab, created, skipped, errors
     """
     df = load_dataframe(file)
@@ -157,7 +164,7 @@ def import_pcs(file, lab_id=None):
     for i, row in df.iterrows():
         try:
             # Try multiple column names for PC name
-            device_name = get_val(row, "device_name", "name", "pc_name", "pc_name_comp_id")
+            device_name = get_val(row, "pc_name", "device_name", "name", "pc_name_comp_id")
             
             if not device_name or str(device_name).strip() == '':
                 errors.append(f"Row {i+2}: PC device name is required")
@@ -170,29 +177,102 @@ def import_pcs(file, lab_id=None):
                 skipped += 1
                 continue
             
-            # Status - default to working
-            status = get_val(row, "status", default="working")
-            if status and status not in ALLOWED_STATUS:
+            # --- PC fields ---
+            # Status: "Working" -> "working", "Not Working" -> "not_working"
+            status_raw = get_val(row, "status", default="working")
+            if status_raw:
+                status_lower = str(status_raw).lower().strip()
+                if status_lower in ("working", "not working", "not_working"):
+                    status = "working" if status_lower == "working" else "not_working"
+                else:
+                    status = "working"
+            else:
                 status = "working"
             
-            connected = parse_bool(row.get("connected"))
-            gpu = parse_bool(row.get("gpu"))
-            peripherals = parse_bool(row.get("peripherals"))
+            # Network/connected: "Connected" -> True, "Disconnected" -> False
+            network_raw = get_val(row, "network", "connected")
+            if network_raw is not None:
+                network_str = str(network_raw).lower().strip()
+                connected = network_str in ('connected', 'yes', 'true', '1', 'y', 't')
+            else:
+                connected = True
+            
+            # GPU: "Has Dedicated GPU" -> True, "No Dedicated GPU" -> False
+            gpu_raw = get_val(row, "graphics_card", "gpu")
+            if gpu_raw is not None:
+                gpu_str = str(gpu_raw).lower().strip()
+                gpu = gpu_str in ('has dedicated gpu', 'yes', 'true', '1', 'y', 't', 'has gpu')
+            else:
+                gpu = False
 
-            PC.objects.create(
+            pc = PC.objects.create(
                 lab=lab,
                 device_name=device_name,
                 product_id=get_val(row, "product_id"),
-                processor=get_val(row, "processor"),
-                ram=get_val(row, "ram"),
-                storage=get_val(row, "storage"),
+                processor=get_val(row, "basic_processor_info", "processor"),
+                ram=get_val(row, "ram_capacity", "ram"),
+                storage=get_val(row, "storage_capacity", "storage"),
                 status=status,
                 connected=connected,
                 gpu=gpu,
-                peripherals=peripherals,
+                peripherals=True,  # We're creating keyboard/mouse peripherals
                 brand=get_val(row, "brand"),
                 serial_number=get_val(row, "serial_number", "serial")
             )
+            
+            # --- CPU fields (create if any CPU data provided) ---
+            cpu_model = get_val(row, "cpu_model")
+            clock_speed = get_val(row, "clock_speed")
+            core_count = parse_int(row.get("core_count"))
+            integrated_raw = get_val(row, "integrated_graphics")
+            
+            if cpu_model or clock_speed or core_count is not None:
+                # integrated_graphics: "Yes" -> True, "No (Dedicated Only)" -> False
+                if integrated_raw is not None:
+                    ig_str = str(integrated_raw).lower().strip()
+                    integrated_graphics = ig_str in ('yes', 'true', '1', 'y', 't', 'integrated')
+                else:
+                    integrated_graphics = False
+                
+                CPU.objects.create(
+                    pc=pc,
+                    model=cpu_model or "Unknown",
+                    clock_speed=clock_speed,
+                    core_count=core_count,
+                    integrated_graphics=integrated_graphics
+                )
+            
+            # --- Peripheral fields (keyboard and mouse) ---
+            # keyboard_status: "Working" -> "working", "Not Working" -> "not_working"
+            keyboard_raw = get_val(row, "keyboard_status")
+            if keyboard_raw is not None:
+                kb_str = str(keyboard_raw).lower().strip()
+                keyboard_status = "working" if kb_str in ('working', 'yes', 'true', '1') else "not_working"
+            else:
+                keyboard_status = "working"
+            
+            Peripheral.objects.create(
+                pc=pc,
+                peripheral_type='keyboard',
+                model_name='Standard Keyboard',
+                status=keyboard_status
+            )
+            
+            # mouse_status: "Working" -> "working", "Not Working" -> "not_working"
+            mouse_raw = get_val(row, "mouse_status")
+            if mouse_raw is not None:
+                ms_str = str(mouse_raw).lower().strip()
+                mouse_status = "working" if ms_str in ('working', 'yes', 'true', '1') else "not_working"
+            else:
+                mouse_status = "working"
+            
+            Peripheral.objects.create(
+                pc=pc,
+                peripheral_type='mouse',
+                model_name='Optical Mouse',
+                status=mouse_status
+            )
+            
             created += 1
 
         except Exception as e:

@@ -12,19 +12,26 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import { useColorMode } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const menuItems = [
-  { name: 'Labs',        icon: Building2,      path: '/labs' },
-  { name: 'PCs',         icon: Monitor,        path: '/pcs' },
-  { name: 'Equipment',   icon: Cpu,            path: '/equipment' },
-  { name: 'Software',    icon: Grid,           path: '/software' },
-  { name: 'Maintenance', icon: Wrench,         path: '/maintenance' },
-  { name: 'Inventory',   icon: Package,        path: '/inventory' },
+  { name: 'Labs',        icon: Building2,      path: '/labs',        adminOnly: true },
+  { name: 'PCs',         icon: Monitor,        path: '/pcs',         adminOnly: true },
+  { name: 'Equipment',   icon: Cpu,            path: '/equipment',   adminOnly: true },
+  { name: 'Software',    icon: Grid,           path: '/software',    adminOnly: true },
+  { name: 'Maintenance', icon: Wrench,         path: '/maintenance', adminOnly: false },
+  { name: 'Inventory',   icon: Package,        path: '/inventory',   adminOnly: true },
 ];
 
 const Sidebar = () => {
   const location = useLocation();
   const { mode, toggleMode } = useColorMode();
+  const { user } = useAuth();
+
+  // Filter menu items based on user role
+  const visibleItems = menuItems.filter(
+    (item) => !item.adminOnly || user?.role === 'admin'
+  );
 
   return (
     <aside
@@ -40,7 +47,7 @@ const Sidebar = () => {
       {/* Navigation links */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 space-y-0.5 scrollbar-hide">
         {/* eslint-disable-next-line no-unused-vars */}
-        {menuItems.map(({ name, icon: Icon, path }) => {
+        {visibleItems.map(({ name, icon: Icon, path }) => {
           const active =
             location.pathname === path ||
             (path !== '/' && location.pathname.startsWith(path));

@@ -33,6 +33,14 @@ class BulkImportAPIView(APIView):
 
         file = request.FILES.get("file")
         entity = request.data.get("entity")
+        lab_id = request.data.get("lab_id")
+        
+        # Parse lab_id to int if provided
+        if lab_id:
+            try:
+                lab_id = int(lab_id)
+            except (ValueError, TypeError):
+                lab_id = None
 
         if not file or not entity:
             return Response(
@@ -44,7 +52,7 @@ class BulkImportAPIView(APIView):
             if entity == "labs":
                 created, skipped, errors = import_labs(file)
             elif entity == "pcs":
-                result = import_pcs(file)
+                result = import_pcs(file, lab_id=lab_id)
                 created = result['created']
                 skipped = result['skipped']
                 errors = result['errors']

@@ -26,13 +26,13 @@ import { useAuth } from '../../contexts/AuthContext';
 const drawerWidth = 280;
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'Labs', icon: <LabIcon />, path: '/labs' },
-  { text: 'PCs', icon: <PCIcon />, path: '/pcs' },
-  { text: 'Equipment', icon: <EquipmentIcon />, path: '/equipment' },
-  { text: 'Software', icon: <SoftwareIcon />, path: '/software' },
-  { text: 'Maintenance', icon: <MaintenanceIcon />, path: '/maintenance' },
-  { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/', adminOnly: true },
+  { text: 'Labs', icon: <LabIcon />, path: '/labs', adminOnly: true },
+  { text: 'PCs', icon: <PCIcon />, path: '/pcs', adminOnly: true },
+  { text: 'Equipment', icon: <EquipmentIcon />, path: '/equipment', adminOnly: true },
+  { text: 'Software', icon: <SoftwareIcon />, path: '/software', adminOnly: true },
+  { text: 'Maintenance', icon: <MaintenanceIcon />, path: '/maintenance', adminOnly: false },
+  { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory', adminOnly: true },
 ];
 
 interface SidebarProps {
@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       </Toolbar>
       <Divider />
       <List>
-        {(user?.role === 'student' ? menuItems.filter(mi => mi.text === 'Maintenance') : menuItems).map((item) => (
+        {menuItems.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               onClick={() => handleNavigation(item.path)}
