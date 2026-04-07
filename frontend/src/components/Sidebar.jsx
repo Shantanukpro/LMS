@@ -9,6 +9,9 @@ import {
   Package,
   Sun,
   Moon,
+  Users,
+  Mouse,
+  Upload,
   LayoutDashboard,
 } from 'lucide-react';
 import { useColorMode } from '../contexts/ThemeContext';
@@ -21,6 +24,9 @@ const menuItems = [
   { name: 'Software',    icon: Grid,           path: '/software',    adminOnly: true },
   { name: 'Maintenance', icon: Wrench,         path: '/maintenance', adminOnly: false },
   { name: 'Inventory',   icon: Package,        path: '/inventory',   adminOnly: true },
+  { name: 'Users',       icon: Users,          path: '/users',       adminOnly: true },
+  { name: 'Peripherals', icon: Mouse,          path: '/peripherals', adminOnly: true },
+  { name: 'Import',      icon: Upload,         path: '/import',      adminOnly: true },
 ];
 
 const Sidebar = () => {

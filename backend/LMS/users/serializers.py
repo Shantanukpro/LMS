@@ -15,6 +15,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['username', 'email', 'password', 'first_name', 'last_name', 'role']
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate(self, data):
+        role = data.get('role', 'student')
+        email = data.get('email', '')
+        if role == 'student' and not email.endswith('@ybit.ac.in'):
+            raise serializers.ValidationError({"email": "Students must register with their college email only (@ybit.ac.in)"})
+        return data
+
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
         return user

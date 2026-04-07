@@ -3,7 +3,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  role: 'admin' | 'student';
+  role: 'admin' | 'student' | 'faculty' | 'lab_incharge';
   profile_picture: string | null;
 }
 
@@ -16,14 +16,14 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
-  role: 'admin' | 'student';
+  role: 'admin' | 'student' | 'faculty' | 'lab_incharge';
 }
 
 export interface AuthResponse {
   access: string;
   refresh: string;
   id?: number;
-  role?: 'admin' | 'student';
+  role?: 'admin' | 'student' | 'faculty' | 'lab_incharge';
   username?: string;
 }
 

@@ -134,6 +134,11 @@ export const authAPI = {
     const response = await api.post('/token/refresh/', { refresh });
     return response.data;
   },
+  
+  socialLogin: async (data: { provider: string; email: string; role?: string }): Promise<AuthResponse & { is_new?: boolean }> => {
+    const response = await api.post('/users/social-login/', data);
+    return response.data;
+  },
 };
 
 // Users API
@@ -156,6 +161,15 @@ export const usersAPI = {
       },
     });
     return response.data;
+  },
+  
+  promote: async (id: number): Promise<User> => {
+    const response = await api.patch(`/users/${id}/`, { role: 'admin' });
+    return response.data;
+  },
+  
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/users/${id}/`);
   },
 };
 
@@ -326,6 +340,18 @@ export const pcsAPI = {
 
   deletePeripheral: async (id: number): Promise<void> => {
     await api.delete(`/peripherals/${id}/`);
+  },
+};
+
+// Peripherals API
+export const peripheralsAPI = {
+  getAll: async (): Promise<Peripheral[]> => {
+    const response = await api.get('/peripherals/');
+    return extractResults<Peripheral>(response.data);
+  },
+  update: async (id: number, data: Partial<Peripheral>): Promise<Peripheral> => {
+    const response = await api.patch(`/peripherals/${id}/`, data);
+    return response.data;
   },
 };
 

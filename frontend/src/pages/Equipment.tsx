@@ -19,8 +19,11 @@ import {
   DialogContent,
   DialogActions,
   InputAdornment,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
-import { Add, Refresh, Edit, Delete, Search } from '@mui/icons-material';
+import { Add, Refresh, Edit, Delete, Search, ExpandMore } from '@mui/icons-material';
 import { labEquipmentAPI, labsAPI } from '../services/api';
 import type { LabEquipment, Lab, NetworkEquipmentDetails, ServerDetails, ProjectorDetails, ElectricalApplianceDetails } from '../types';
 import { Eye, Server as ServerIcon, Network, Cpu, HardDrive, Activity } from 'lucide-react';
@@ -87,6 +90,7 @@ const Equipment: React.FC = () => {
   const [openForm, setOpenForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<EquipmentForm>(emptyForm);
+  const [detailsData, setDetailsData] = useState<any>({});
 
   // details dialog
   const [detailsItem, setDetailsItem] = useState<LabEquipment | null>(null);
@@ -136,6 +140,7 @@ const Equipment: React.FC = () => {
   const openCreate = () => {
     setEditingId(null);
     setFormData(emptyForm);
+    setDetailsData({});
     setOpenForm(true);
   };
 
@@ -151,6 +156,7 @@ const Equipment: React.FC = () => {
       location_in_lab: row.location_in_lab || '',
       status: row.status as any,
     });
+    setDetailsData(row.details || {});
     setOpenForm(true);
   };
 
@@ -174,7 +180,24 @@ const Equipment: React.FC = () => {
       };
       if (editingId) {
         const updated = await labEquipmentAPI.update(editingId, payload);
-        setItems((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
+        
+        // Save sub-form details
+        try {
+          if (['ROUTER', 'SWITCH', 'HUB'].includes(formData.equipment_type)) {
+            await labEquipmentAPI.updateNetworkDetails(editingId, detailsData);
+          } else if (formData.equipment_type === 'SERVER') {
+            await labEquipmentAPI.updateServerDetails(editingId, detailsData);
+          } else if (formData.equipment_type === 'PROJECTOR') {
+            await labEquipmentAPI.updateProjectorDetails(editingId, detailsData);
+          } else if (['AC', 'FAN', 'LIGHT', 'UPS'].includes(formData.equipment_type)) {
+            await labEquipmentAPI.updateElectricalDetails(editingId, detailsData);
+          }
+        } catch (e) {
+             console.warn("Failed saving details:", e);
+        }
+
+        // reload data to reflect details
+        await loadAll();
         setSuccess('Equipment updated');
       } else {
         const created = await labEquipmentAPI.create(payload as any);
@@ -443,6 +466,88 @@ const Equipment: React.FC = () => {
                   ))}
                 </TextField>
               </Stack>
+
+              {/* Dynamic Sub-forms */}
+              {editingId && ['ROUTER', 'SWITCH', 'HUB'].includes(formData.equipment_type) && (
+                <Accordion sx={{ mt: 2, bgcolor: 'background.default', borderRadius: '12px', '&:before': { display: 'none' }, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }} disableGutters>
+                  <AccordionSummary expandIcon={<ExpandMore />} sx={{ fontWeight: 600 }}>
+                    <Network size={20} className="mr-2 text-indigo-500" />
+                    Network Configuration
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2}>
+                      <Stack direction="row" spacing={2}>
+                        <TextField label="IP Address" value={detailsData.ip_address || ''} onChange={(e) => setDetailsData({ ...detailsData, ip_address: e.target.value })} fullWidth size="small" />
+                        <TextField label="MAC Address" value={detailsData.mac_address || ''} onChange={(e) => setDetailsData({ ...detailsData, mac_address: e.target.value })} fullWidth size="small" />
+                      </Stack>
+                      <Stack direction="row" spacing={2}>
+                        <TextField label="Firmware Version" value={detailsData.firmware_version || ''} onChange={(e) => setDetailsData({ ...detailsData, firmware_version: e.target.value })} fullWidth size="small" />
+                        <TextField label="Bandwidth / Speed" value={detailsData.bandwidth_capacity || ''} onChange={(e) => setDetailsData({ ...detailsData, bandwidth_capacity: e.target.value })} fullWidth size="small" />
+                      </Stack>
+                      <TextField select label="Managed Switch" value={detailsData.managed_switch ? 'true' : 'false'} onChange={(e) => setDetailsData({ ...detailsData, managed_switch: e.target.value === 'true' })} size="small" sx={{ width: '50%' }}>
+                        <MenuItem value="true">Yes</MenuItem>
+                        <MenuItem value="false">No</MenuItem>
+                      </TextField>
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {editingId && formData.equipment_type === 'SERVER' && (
+                <Accordion sx={{ mt: 2, bgcolor: 'background.default', borderRadius: '12px', '&:before': { display: 'none' }, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }} disableGutters>
+                  <AccordionSummary expandIcon={<ExpandMore />} sx={{ fontWeight: 600 }}>
+                    <ServerIcon size={20} className="mr-2 text-indigo-500" />
+                    Server Details
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2}>
+                      <Stack direction="row" spacing={2}>
+                        <TextField label="Total RAM" value={detailsData.total_ram || ''} onChange={(e) => setDetailsData({ ...detailsData, total_ram: e.target.value })} fullWidth size="small" placeholder="e.g. 64GB" />
+                        <TextField label="RAID Config" value={detailsData.raid_config || ''} onChange={(e) => setDetailsData({ ...detailsData, raid_config: e.target.value })} fullWidth size="small" placeholder="e.g. RAID 5" />
+                      </Stack>
+                      <TextField select label="Virtualization Enabled" value={detailsData.virtualization_enabled ? 'true' : 'false'} onChange={(e) => setDetailsData({ ...detailsData, virtualization_enabled: e.target.value === 'true' })} size="small" sx={{ width: '50%' }}>
+                        <MenuItem value="true">Yes</MenuItem>
+                        <MenuItem value="false">No</MenuItem>
+                      </TextField>
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {editingId && formData.equipment_type === 'PROJECTOR' && (
+                <Accordion sx={{ mt: 2, bgcolor: 'background.default', borderRadius: '12px', '&:before': { display: 'none' }, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }} disableGutters>
+                  <AccordionSummary expandIcon={<ExpandMore />} sx={{ fontWeight: 600 }}>
+                    <Eye size={20} className="mr-2 text-indigo-500" />
+                    Projector Specs
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2} direction="row">
+                      <TextField label="Resolution" value={detailsData.resolution || ''} onChange={(e) => setDetailsData({ ...detailsData, resolution: e.target.value })} fullWidth size="small" placeholder="1080p, 4K..." />
+                      <TextField label="Brightness (Lumens)" type="number" value={detailsData.brightness_lumens || ''} onChange={(e) => setDetailsData({ ...detailsData, brightness_lumens: e.target.value ? Number(e.target.value) : '' })} fullWidth size="small" />
+                      <TextField label="Throw Type" value={detailsData.throw_type || ''} onChange={(e) => setDetailsData({ ...detailsData, throw_type: e.target.value })} fullWidth size="small" placeholder="Short Throw" />
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {editingId && ['AC', 'FAN', 'LIGHT', 'UPS'].includes(formData.equipment_type) && (
+                <Accordion sx={{ mt: 2, bgcolor: 'background.default', borderRadius: '12px', '&:before': { display: 'none' }, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }} disableGutters>
+                  <AccordionSummary expandIcon={<ExpandMore />} sx={{ fontWeight: 600 }}>
+                    <Activity size={20} className="mr-2 text-indigo-500" />
+                    Electrical Details
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2} direction="row">
+                      <TextField label="Power Rating / Wattage" value={detailsData.power_rating || ''} onChange={(e) => setDetailsData({ ...detailsData, power_rating: e.target.value })} fullWidth size="small" />
+                      <TextField label="Voltage" value={detailsData.voltage || ''} onChange={(e) => setDetailsData({ ...detailsData, voltage: e.target.value })} fullWidth size="small" />
+                    </Stack>
+                    <Stack spacing={2} direction="row" sx={{ mt: 2 }}>
+                      <TextField label="Inverter Type" value={detailsData.inverter_type || ''} onChange={(e) => setDetailsData({ ...detailsData, inverter_type: e.target.value })} fullWidth size="small" />
+                      <TextField label="Energy Rating" value={detailsData.energy_rating || ''} onChange={(e) => setDetailsData({ ...detailsData, energy_rating: e.target.value })} fullWidth size="small" />
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              )}
             </Stack>
           </DialogContent>
           <DialogActions>

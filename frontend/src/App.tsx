@@ -17,6 +17,9 @@ import Settings from './pages/Settings';
 import Account from './pages/Account';
 import MusterRegister from './pages/MusterRegister';
 import MusterList from './pages/MusterList';
+import Users from './pages/Users';
+import Peripherals from './pages/Peripherals';
+import Import from './pages/Import';
 import { useAuth } from './contexts/AuthContext';
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -140,6 +143,45 @@ const App: React.FC = () => {
                 <AppLayout>
                   <AdminRoute>
                     <LabDetail />
+                  </AdminRoute>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <AdminRoute>
+                    <Users />
+                  </AdminRoute>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/peripherals"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <AdminRoute>
+                    <Peripherals />
+                  </AdminRoute>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/import"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <AdminRoute>
+                    <Import />
                   </AdminRoute>
                 </AppLayout>
               </ProtectedRoute>

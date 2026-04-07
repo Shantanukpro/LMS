@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Box, Typography, Card, CardContent, Stack, TextField, MenuItem, Chip, CircularProgress, Button, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
-import { Search, Refresh, Add, Edit, Delete } from '@mui/icons-material';
+import { Box, Typography, Card, CardContent, Stack, TextField, MenuItem, Chip, CircularProgress, Button, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { Search, Refresh, Add, Edit, Delete, ExpandMore } from '@mui/icons-material';
 import { labsAPI, pcsAPI } from '../services/api';
 import type { Lab, PC } from '../types';
 import LabPCTable from '../components/Labs/LabPCTable';
@@ -76,6 +76,10 @@ const PCs: React.FC = () => {
     cpu_clock_speed: '',
     cpu_core_count: '' as number | '',
     cpu_integrated_graphics: false,
+    os_name: '',
+    os_version: '',
+    os_product_key: '',
+    os_architecture: '64-bit' as '64-bit' | '32-bit',
     keyboard_status: 'working' as 'working' | 'broken',
     mouse_status: 'working' as 'working' | 'broken',
   });
@@ -95,6 +99,10 @@ const PCs: React.FC = () => {
     cpu_clock_speed: '',
     cpu_core_count: '' as number | '',
     cpu_integrated_graphics: false,
+    os_name: '',
+    os_version: '',
+    os_product_key: '',
+    os_architecture: '64-bit' as '64-bit' | '32-bit',
     keyboard_status: 'working' as 'working' | 'broken',
     mouse_status: 'working' as 'working' | 'broken',
   };
@@ -192,6 +200,10 @@ const PCs: React.FC = () => {
       cpu_clock_speed: pc.cpu?.clock_speed || '',
       cpu_core_count: pc.cpu?.core_count || '',
       cpu_integrated_graphics: pc.cpu?.integrated_graphics || false,
+      os_name: pc.os?.name || '',
+      os_version: pc.os?.version || '',
+      os_product_key: pc.os?.product_key || '',
+      os_architecture: pc.os?.architecture || '64-bit',
       keyboard_status: (keyboard?.status as any) || 'working',
       mouse_status: (mouse?.status as any) || 'working',
     });
@@ -232,7 +244,29 @@ const PCs: React.FC = () => {
 
       if (editingId) {
         const updated = await pcsAPI.update(editingId, payload as any);
-        setPcs((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
+        
+        try {
+          if (formData.os_name) {
+            await pcsAPI.updateOS(editingId, {
+              name: formData.os_name,
+              version: formData.os_version,
+              product_key: formData.os_product_key,
+              architecture: formData.os_architecture,
+            });
+          }
+          if (formData.cpu_model) {
+            await pcsAPI.updateCPU(editingId, {
+              model: formData.cpu_model,
+              clock_speed: formData.cpu_clock_speed,
+              core_count: Number(formData.cpu_core_count) || undefined,
+              integrated_graphics: formData.cpu_integrated_graphics,
+            });
+          }
+        } catch (e) {
+          console.warn("Failed saving OS/CPU details:", e);
+        }
+
+        await load();
         setSuccess('PC updated');
       } else {
         // Need to select a lab for creating new PC
@@ -449,47 +483,95 @@ const PCs: React.FC = () => {
                   </Stack>
                 </Box>
 
-                {/* Section 3: CPU Deep Details */}
+                {/* Section 3: CPU & OS Deep Details (Collapsible) */}
                 <Box>
-                  <Typography variant="overline" color="secondary" sx={{ fontWeight: 'bold' }}>CPU Specifications (Deep Details)</Typography>
-                  <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-                    <TextField
-                      label="Exact CPU Model"
-                      value={formData.cpu_model}
-                      onChange={(e) => setFormData({ ...formData, cpu_model: e.target.value })}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Clock Speed"
-                      value={formData.cpu_clock_speed}
-                      onChange={(e) => setFormData({ ...formData, cpu_clock_speed: e.target.value })}
-                      fullWidth
-                      placeholder="e.g. 3.2GHz"
-                    />
-                    <TextField
-                      label="Cores"
-                      type="number"
-                      value={formData.cpu_core_count}
-                      onChange={(e) => setFormData({ ...formData, cpu_core_count: e.target.value ? parseInt(e.target.value) : '' })}
-                      fullWidth
-                    />
-                  </Stack>
-                  <Stack direction="row" sx={{ mt: 1 }}>
-                    <MenuItem sx={{ p: 0 }}>
+                  <Accordion sx={{ bgcolor: 'background.default', borderRadius: '12px', '&:before': { display: 'none' }, boxShadow: 'none', border: '1px solid', borderColor: 'divider', mb: 2 }} disableGutters>
+                    <AccordionSummary expandIcon={<ExpandMore />} sx={{ fontWeight: 600 }}>
+                      CPU Configuration (Advanced)
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                        <TextField
+                          label="Exact CPU Model"
+                          value={formData.cpu_model}
+                          onChange={(e) => setFormData({ ...formData, cpu_model: e.target.value })}
+                          fullWidth size="small"
+                        />
+                        <TextField
+                          label="Clock Speed"
+                          value={formData.cpu_clock_speed}
+                          onChange={(e) => setFormData({ ...formData, cpu_clock_speed: e.target.value })}
+                          fullWidth size="small"
+                          placeholder="e.g. 3.2GHz"
+                        />
+                        <TextField
+                          label="Cores"
+                          type="number"
+                          value={formData.cpu_core_count}
+                          onChange={(e) => setFormData({ ...formData, cpu_core_count: e.target.value ? parseInt(e.target.value) : '' })}
+                          fullWidth size="small"
+                        />
+                      </Stack>
                       <TextField
                         select
                         label="Integrated Graphics"
                         value={formData.cpu_integrated_graphics ? 'true' : 'false'}
                         onChange={(e) => setFormData({ ...formData, cpu_integrated_graphics: e.target.value === 'true' })}
-                        fullWidth
-                        size="small"
-                        sx={{ minWidth: 200 }}
+                        fullWidth size="small" sx={{ maxWidth: 250 }}
                       >
                         <MenuItem value="true">Supports Integrated</MenuItem>
                         <MenuItem value="false">No Integrated Support</MenuItem>
                       </TextField>
-                    </MenuItem>
-                  </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+
+                  <Accordion sx={{ bgcolor: 'background.default', borderRadius: '12px', '&:before': { display: 'none' }, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }} disableGutters>
+                    <AccordionSummary expandIcon={<ExpandMore />} sx={{ fontWeight: 600 }}>
+                      Operating System Configuration
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                        <TextField
+                          select
+                          label="OS Type"
+                          value={formData.os_name}
+                          onChange={(e) => setFormData({ ...formData, os_name: e.target.value })}
+                          fullWidth size="small"
+                        >
+                          <MenuItem value="">Select OS</MenuItem>
+                          <MenuItem value="Windows 10">Windows 10</MenuItem>
+                          <MenuItem value="Windows 11">Windows 11</MenuItem>
+                          <MenuItem value="Ubuntu Linux">Ubuntu Linux</MenuItem>
+                          <MenuItem value="macOS">macOS</MenuItem>
+                        </TextField>
+                        <TextField
+                          label="Version/Build"
+                          value={formData.os_version}
+                          onChange={(e) => setFormData({ ...formData, os_version: e.target.value })}
+                          fullWidth size="small"
+                          placeholder="22H2"
+                        />
+                        <TextField
+                          select
+                          label="Architecture"
+                          value={formData.os_architecture}
+                          onChange={(e) => setFormData({ ...formData, os_architecture: e.target.value as any })}
+                          fullWidth size="small"
+                        >
+                          <MenuItem value="64-bit">64-bit</MenuItem>
+                          <MenuItem value="32-bit">32-bit</MenuItem>
+                        </TextField>
+                      </Stack>
+                      <TextField
+                        label="License / Product Key"
+                        value={formData.os_product_key}
+                        onChange={(e) => setFormData({ ...formData, os_product_key: e.target.value })}
+                        fullWidth size="small"
+                        sx={{ input: { fontFamily: 'monospace' } }}
+                        placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+                      />
+                    </AccordionDetails>
+                  </Accordion>
                 </Box>
 
                 {/* Section 4: Peripherals & Status */}

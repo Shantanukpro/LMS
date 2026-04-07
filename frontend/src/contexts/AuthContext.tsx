@@ -7,6 +7,7 @@ interface AuthContextType {
   loading: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
   register: (userData: RegisterRequest) => Promise<void>;
+  socialLoginAuth: (data: { provider: string; email: string; role?: string }) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   devSignIn: () => void;
@@ -96,6 +97,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const socialLoginAuth = async (data: { provider: string; email: string; role?: string }) => {
+    try {
+      const response = await authAPI.socialLogin(data);
+      setTokens(response.access, response.refresh);
+
+      const loggedInUser: User = {
+        id: response.id || 0,
+        username: response.username || data.email.split('@')[0] || 'User',
+        email: data.email,
+        role: (response.role as User['role']) || 'student',
+        profile_picture: null,
+      };
+      setUser(loggedInUser);
+      localStorage.setItem('user_info', JSON.stringify(loggedInUser));
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const logout = () => {
     clearTokens();
     setUser(null);
@@ -115,6 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     login,
     register,
+    socialLoginAuth,
     logout,
     isAuthenticated: !!user,
     updateUser,

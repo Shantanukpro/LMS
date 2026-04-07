@@ -12,6 +12,8 @@ class User(AbstractUser):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
         ('student', 'Student'),
+        ('faculty', 'Faculty'),
+        ('lab_incharge', 'Lab Incharge'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
