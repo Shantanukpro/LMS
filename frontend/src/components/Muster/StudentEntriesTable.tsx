@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Users, UserPlus, Upload, Trash2, CheckSquare, Square } from 'lucide-react';
 import { Button, Tooltip, Typography, Badge } from '@mui/material';
 import StudentEntryRow from './StudentEntryRow';
@@ -22,7 +22,7 @@ interface StudentEntriesTableProps {
   onToggleSelect: (index: number) => void;
   onSelectAll: (all: boolean) => void;
   onEntryChange: (index: number, updates: any) => void;
-  onImportClick: () => void;
+  onImportCSV: (file: File) => void;
 }
 
 const StudentEntriesTable: React.FC<StudentEntriesTableProps> = ({
@@ -36,12 +36,23 @@ const StudentEntriesTable: React.FC<StudentEntriesTableProps> = ({
   onToggleSelect,
   onSelectAll,
   onEntryChange,
-  onImportClick
+  onImportCSV
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const total = entries.length;
   const present = entries.filter(e => e.attendance === 'P').length;
   const absent = total - present;
   const allSelected = total > 0 && selectedIndices.size === total;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onImportCSV(file);
+    }
+    // Reset so the same file can be re-selected if needed
+    e.target.value = '';
+  };
 
   return (
     <div className="bg-white dark:bg-[#161b22] rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm overflow-hidden mb-12">
@@ -61,10 +72,18 @@ const StudentEntriesTable: React.FC<StudentEntriesTableProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Hidden file input for CSV import */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
           <Button 
             variant="outlined" 
             size="small" 
-            onClick={onImportClick}
+            onClick={() => fileInputRef.current?.click()}
             startIcon={<Upload size={14} />}
             sx={actionBtnStyles}
           >
