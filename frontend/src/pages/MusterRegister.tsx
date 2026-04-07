@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { labsAPI, musterAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -260,6 +260,91 @@ const MusterRegister: React.FC = () => {
     setShowResetConfirm(false);
   };
 
+  // CSV Import Handler
+  const handleImportCSV = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (!text || !text.trim()) {
+          setError('Import Failed: The CSV file is empty.');
+          return;
+        }
+
+        const lines = text.split(/\r?\n/).filter(line => line.trim());
+        if (lines.length < 2) {
+          setError('Import Failed: CSV must have a header row and at least one data row.');
+          return;
+        }
+
+        const headerLine = lines[0];
+        if (!headerLine) {
+          setError('Import Failed: Could not read the CSV header row.');
+          return;
+        }
+        const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/[\s_]+/g, '_'));
+
+        // Find column indices (flexible naming)
+        const rollIdx = headers.findIndex(h => ['roll_no', 'roll_number', 'rollno', 'roll'].includes(h));
+        const nameIdx = headers.findIndex(h => ['student_name', 'name', 'studentname', 'student'].includes(h));
+        const attendIdx = headers.findIndex(h => ['attendance', 'status', 'attend'].includes(h));
+
+        if (rollIdx === -1) {
+          setError('Import Failed: CSV must include a "roll_no" (or "roll_number") column.');
+          return;
+        }
+
+        const dataLines = lines.slice(1);
+        const newEntries: Entry[] = [];
+
+        for (let i = 0; i < dataLines.length; i++) {
+          const line = dataLines[i];
+          if (!line) continue;
+          // Simple CSV parsing (handles basic comma-separated values)
+          const cols = line.split(',').map(c => c.trim());
+          const rollNo = cols[rollIdx] || '';
+          if (!rollNo) continue; // skip blank rows
+
+          const studentName = nameIdx !== -1 ? (cols[nameIdx] || '') : '';
+          const rawAttend = attendIdx !== -1 ? (cols[attendIdx] || '').toUpperCase() : 'P';
+          const attendance: 'P' | 'A' = rawAttend === 'A' ? 'A' : 'P';
+
+          newEntries.push({
+            sr_no: newEntries.length + 1,
+            roll_no: rollNo,
+            student_name: studentName,
+            pc: '',
+            attendance,
+          });
+        }
+
+        if (newEntries.length === 0) {
+          setError('Import Failed: No valid student rows found in the CSV.');
+          return;
+        }
+
+        // Check for duplicate roll numbers in the imported data
+        const rolls = newEntries.map(e => e.roll_no);
+        if (new Set(rolls).size !== rolls.length) {
+          setError('Import Warning: Duplicate roll numbers detected in CSV. Please review entries.');
+        }
+
+        setEntries(newEntries);
+        // Open all rows for editing so user can assign PCs
+        setEditingIndices(new Set(newEntries.map((_, idx) => idx)));
+        setSelectedIndices(new Set());
+        setHasUnsavedChanges(true);
+        setSuccess(`CSV Imported: ${newEntries.length} student(s) loaded successfully.`);
+      } catch (err) {
+        setError('Import Failed: Could not parse the CSV file. Please check its format.');
+      }
+    };
+    reader.onerror = () => {
+      setError('Import Failed: Could not read the selected file.');
+    };
+    reader.readAsText(file);
+  }, []);
+
   const handleSave = async () => {
     // 1. Validation
     if (!sessionFormData.lab || !sessionFormData.className || !sessionFormData.batch || !sessionFormData.time) {
@@ -372,7 +457,7 @@ const MusterRegister: React.FC = () => {
         onToggleSelect={handleToggleSelect}
         onSelectAll={handleSelectAll}
         onEntryChange={handleEntryChange}
-        onImportClick={() => setError('Module Interface Down: CSV Import coming soon.')}
+        onImportCSV={handleImportCSV}
       />
 
       {/* 4. Overlays & Sticky Modules */}
