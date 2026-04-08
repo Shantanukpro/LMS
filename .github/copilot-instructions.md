@@ -117,6 +117,7 @@ Only two roles exist: `admin` and `student`. There are no other roles (no `lab_a
 - DRF `ModelViewSet` at `/muster/sessions/` — full CRUD with authentication
 - Django template views (`@login_required`) for HTML-based muster forms
 - Time is auto-rounded to nearest 30 minutes via `_round_time_to_30min()` helper
+- Frontend features a browser-based CSV import (`roll_no`, `student_name`, `attendance`) for rapid student enrollment handled directly via `FileReader` in `MusterRegister.tsx`.
 
 ### Bulk Import
 - `BulkImportAPIView` in `LMS/views.py` — JWT-authenticated, admin-only

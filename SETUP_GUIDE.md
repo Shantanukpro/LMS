@@ -98,7 +98,11 @@ npm start
 9) Optional: Docker
 - If you plan to dockerize, prepare Dockerfile and docker-compose.yml and adjust environment vars.
 
-10) Troubleshooting tips
+10) Data Import
+- For bulk equipment loading, a JWT-authenticated `POST /api/import/` endpoint exists for importing labs, PCs, and LabEquipment.
+- Within the frontend's Muster module, admins can import a student roster directly via CSV (`roll_no`, `student_name`, `attendance`) using the 'Import CSV' button in the New Register form.
+
+11) Troubleshooting tips
 - Ensure venv is activated before installing packages.
 - If migrations fail, re-run makemigrations and migrate.
 - Check port availability if runserver cannot start.
