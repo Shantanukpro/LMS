@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import (
+from labs.models import (
     User, Lab, PC, CPU, OS, Peripheral, Software,
     LabEquipment, NetworkEquipmentDetails, ServerDetails, 
     ProjectorDetails, ElectricalApplianceDetails, MaintenanceLog

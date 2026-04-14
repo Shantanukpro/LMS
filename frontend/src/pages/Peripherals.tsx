@@ -154,7 +154,7 @@ const Peripherals: React.FC = () => {
             const nameLabel = `${p.brand || ''} ${p.model_name || ''}`.trim() || typeLabel;
             
             return (
-              <Grid item xs={12} md={4} key={p.id}>
+              <Grid size={{ xs: 12, md: 4 }} key={p.id}>
                 <Card 
                   sx={{ 
                     borderRadius: '16px', 
@@ -165,11 +165,10 @@ const Peripherals: React.FC = () => {
                     bgcolor: 'background.paper',
                     backgroundImage: 'none',
                     border: '1px solid',
-                    borderColor: 'divider',
+                    borderColor: !isAssigned ? 'rgba(245, 158, 11, 0.4)' : 'divider',
                     position: 'relative',
                     overflow: 'hidden',
                     ...( !isAssigned ? {
-                      borderColor: 'rgba(245, 158, 11, 0.4)',
                       boxShadow: '0 4px 20px rgba(245, 158, 11, 0.05)',
                       '&::before': {
                         content: '""',

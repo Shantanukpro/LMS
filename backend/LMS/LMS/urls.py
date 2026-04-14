@@ -8,7 +8,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from .views import BulkImportAPIView, bulk_import_test_ui
+from LMS.views import BulkImportAPIView, bulk_import_test_ui
 from users.views import LoginView
 
 urlpatterns = [

@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
-from .models import Ticket
-from .serializers import TicketSerializer
+from tickets.models import Ticket
+from tickets.serializers import TicketSerializer
 from users.models import User
 from notifications.models import Notification
 
