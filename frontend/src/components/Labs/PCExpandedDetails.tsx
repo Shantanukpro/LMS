@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, Keyboard, MousePointer2, Activity, Zap, Layers } from 'lucide-react';
+import { Cpu, Keyboard, MousePointer2, Activity, Zap, Layers, IndianRupee } from 'lucide-react';
 import { Stack } from '@mui/material';
 import type { PC } from '../../types';
 import EquipmentCard from './EquipmentCard';
@@ -17,7 +17,7 @@ const PCExpandedDetails: React.FC<PCExpandedDetailsProps> = ({ pc }) => {
 
   return (
     <div className="p-6 bg-slate-100/30 dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/5 animate-fade-in shadow-inner">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* CPU Details */}
         <EquipmentCard 
           title="CPU / Processor"
@@ -63,6 +63,20 @@ const PCExpandedDetails: React.FC<PCExpandedDetailsProps> = ({ pc }) => {
           fields={[
             { label: 'Type/Name', value: mouse?.type || 'Optical Mouse' },
             { label: 'Status', value: <BooleanBadge value={mouse?.status === 'working'} trueLabel="Working" falseLabel="Broken" /> }
+          ]}
+        />
+
+        {/* Cost Breakdown */}
+        <EquipmentCard 
+          title="Cost Breakdown"
+          icon={IndianRupee}
+          accentColor="emerald"
+          fields={[
+            { label: 'Base Unit', value: pc.base_price != null ? `₹ ${Number(pc.base_price).toLocaleString('en-IN')}` : '—' },
+            { label: 'Processor', value: pc.cpu?.price != null ? `₹ ${Number(pc.cpu?.price).toLocaleString('en-IN')}` : '—' },
+            { label: 'OS License', value: pc.os?.license_cost != null ? `₹ ${Number(pc.os?.license_cost).toLocaleString('en-IN')}` : '—' },
+            { label: 'Keyboard', value: keyboard?.price != null ? `₹ ${Number(keyboard?.price).toLocaleString('en-IN')}` : '—' },
+            { label: 'Mouse', value: mouse?.price != null ? `₹ ${Number(mouse?.price).toLocaleString('en-IN')}` : '—' },
           ]}
         />
       </div>

@@ -26,7 +26,7 @@ import { Add, Delete, Edit, Refresh, Search } from '@mui/icons-material';
 import { labsAPI } from '../services/api';
 import type { Lab } from '../types';
 
-const emptyForm = { name: '', location: '' };
+const emptyForm = { name: '', location: '', manual_cost: '' as string | number };
 
 type LabForm = typeof emptyForm;
 
@@ -83,7 +83,7 @@ const Labs: React.FC = () => {
 
   const handleOpenEdit = (lab: Lab) => {
     setEditingId(lab.id);
-    setFormData({ name: lab.name, location: lab.location || '' });
+    setFormData({ name: lab.name, location: lab.location || '', manual_cost: lab.manual_cost || '' });
     setOpenForm(true);
   };
 
@@ -99,6 +99,7 @@ const Labs: React.FC = () => {
         const updated = await labsAPI.update(editingId, {
           name: formData.name.trim(),
           location: formData.location?.trim() || '',
+          manual_cost: formData.manual_cost ? Number(formData.manual_cost) : 0,
         });
         setLabs((prev) => prev.map((l) => (l.id === editingId ? updated : l)));
         setSuccess('Lab updated successfully');
@@ -106,6 +107,7 @@ const Labs: React.FC = () => {
         const created = await labsAPI.create({
           name: formData.name.trim(),
           location: formData.location?.trim() || '',
+          manual_cost: formData.manual_cost ? Number(formData.manual_cost) : 0,
         });
         setLabs((prev) => [created, ...prev]);
         setSuccess('Lab created successfully');
@@ -222,8 +224,11 @@ const Labs: React.FC = () => {
                   <Typography variant="h6" component="div" sx={{ fontWeight: 600, mb: 0.5 }}>
                     {lab.name}
                   </Typography>
-                  <Typography color="text.secondary" variant="body2">
+                  <Typography color="text.secondary" variant="body2" sx={{ mb: 1 }}>
                     {lab.location || 'No location specified'}
+                  </Typography>
+                  <Typography variant="h6" color="primary" sx={{ fontWeight: 700 }}>
+                    {lab.total_price != null ? `₹ ${Number(lab.total_price).toLocaleString('en-IN')}` : '₹ 0'}
                   </Typography>
                 </CardContent>
                 {isAdmin && (
@@ -264,6 +269,12 @@ const Labs: React.FC = () => {
                 label="Location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              />
+              <TextField
+                label="Total Cost (Budget / Fixed Price) in ₹"
+                type="number"
+                value={formData.manual_cost}
+                onChange={(e) => setFormData({ ...formData, manual_cost: e.target.value })}
               />
             </Stack>
           </DialogContent>

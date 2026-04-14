@@ -98,6 +98,12 @@ const PCTableRow: React.FC<PCTableRowProps> = ({
           {getStatusBadge(pc.status)}
         </td>
 
+        <td className="px-6 py-4">
+          <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold tracking-tight">
+            {pc.total_price != null ? `₹ ${Number(pc.total_price).toLocaleString('en-IN')}` : '₹ 0'}
+          </span>
+        </td>
+
         <td className="px-6 py-4 text-right pr-6">
           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <Tooltip title="Edit PC">
@@ -124,7 +130,7 @@ const PCTableRow: React.FC<PCTableRowProps> = ({
 
       {/* Expanded Row Panel */}
       <tr className={`overflow-hidden transition-all duration-500 ease-in-out ${isExpanded ? 'active' : 'hidden'}`}>
-        <td colSpan={showLab ? 7 : 6} className="p-0 border-none bg-transparent">
+        <td colSpan={showLab ? 8 : 7} className="p-0 border-none bg-transparent">
           <div className={`overflow-hidden transition-all duration-500 ${isExpanded ? 'max-h-[800px] opacity-100 py-0' : 'max-h-0 opacity-0'}`}>
             <PCExpandedDetails pc={pc} />
           </div>

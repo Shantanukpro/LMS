@@ -82,7 +82,9 @@ const Import: React.FC = () => {
       'lab-equipment': 'category,status,quantity,location_in_lab,equipment_type\nFurniture,working,5,Corner,OTHER\n'
     };
     if (!entity) return;
-    const blob = new Blob([templates[entity]], { type: 'text/csv' });
+    const content = templates[entity];
+    if (!content) return;
+    const blob = new Blob([content], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -121,7 +123,7 @@ const Import: React.FC = () => {
                 </TextField>
 
                 {(entity === 'pcs' || entity === 'lab-equipment') && (
-                  <TextField select label="Target Lab" value={labId} onChange={(e) => setLabId(e.target.value as number)} fullWidth>
+                  <TextField select label="Target Lab" value={labId} onChange={(e) => setLabId(e.target.value ? Number(e.target.value) : '')} fullWidth>
                     {labs.map((l) => (
                       <MenuItem key={l.id} value={l.id}>{l.name} - {l.location}</MenuItem>
                     ))}

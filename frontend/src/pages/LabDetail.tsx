@@ -43,7 +43,13 @@ const emptyPC = {
   cpu_core_count: '' as number | '',
   cpu_integrated_graphics: false,
   keyboard_status: 'working',
-  mouse_status: 'working'
+  mouse_status: 'working',
+  base_price: '' as string | number,
+  cpu_price: '' as string | number,
+  os_name: 'Windows 11 Pro',
+  os_license_cost: '' as string | number,
+  keyboard_price: '' as string | number,
+  mouse_price: '' as string | number,
 };
 
 type PCForm = typeof emptyPC;
@@ -138,6 +144,12 @@ const LabDetail: React.FC = () => {
       cpu_integrated_graphics: pc.cpu?.integrated_graphics || false,
       keyboard_status: (keyboard?.status as any) || 'working',
       mouse_status: (mouse?.status as any) || 'working',
+      base_price: pc.base_price || '',
+      cpu_price: pc.cpu?.price || '',
+      os_name: pc.os?.name || 'Windows 11 Pro',
+      os_license_cost: pc.os?.license_cost || '',
+      keyboard_price: keyboard?.price || '',
+      mouse_price: mouse?.price || '',
     });
     setOpenForm(true);
   };
@@ -160,15 +172,21 @@ const LabDetail: React.FC = () => {
       storage: formData.storage?.trim() || undefined,
       graphics_card: formData.graphics_card?.trim() || undefined,
       gpu: formData.gpu,
+      base_price: formData.base_price === '' ? 0 : Number(formData.base_price),
+      os: {
+        name: formData.os_name.trim() || 'Windows 11 Pro',
+        license_cost: formData.os_license_cost === '' ? 0 : Number(formData.os_license_cost)
+      },
       cpu: {
         model: formData.cpu_model.trim() || undefined,
         clock_speed: formData.cpu_clock_speed.trim() || undefined,
         core_count: formData.cpu_core_count || undefined,
-        integrated_graphics: formData.cpu_integrated_graphics
+        integrated_graphics: formData.cpu_integrated_graphics,
+        price: formData.cpu_price === '' ? 0 : Number(formData.cpu_price)
       },
       peripheral_devices: [
-        { peripheral_type: 'keyboard', status: formData.keyboard_status },
-        { peripheral_type: 'mouse', status: formData.mouse_status }
+        { peripheral_type: 'keyboard', status: formData.keyboard_status, price: formData.keyboard_price === '' ? 0 : Number(formData.keyboard_price) },
+        { peripheral_type: 'mouse', status: formData.mouse_status, price: formData.mouse_price === '' ? 0 : Number(formData.mouse_price) }
       ]
     };
 
@@ -384,6 +402,13 @@ const LabDetail: React.FC = () => {
                     <MenuItem value="true">Connected</MenuItem>
                     <MenuItem value="false">Disconnected</MenuItem>
                   </TextField>
+                  <TextField
+                    label="Base Price (₹)"
+                    type="number"
+                    value={formData.base_price}
+                    onChange={(e) => setFormData({ ...formData, base_price: e.target.value })}
+                    fullWidth
+                  />
                 </Stack>
               </Box>
 
@@ -470,6 +495,32 @@ const LabDetail: React.FC = () => {
                     <MenuItem value="true">Yes (Integrated)</MenuItem>
                     <MenuItem value="false">No (Dedicated Only)</MenuItem>
                   </TextField>
+                  <TextField
+                    label="CPU Price (₹)"
+                    type="number"
+                    value={formData.cpu_price}
+                    onChange={(e) => setFormData({ ...formData, cpu_price: e.target.value })}
+                    fullWidth
+                  />
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="secondary" sx={{ fontWeight: 'bold' }}>Operating System</Typography>
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    label="OS Name & Version"
+                    value={formData.os_name}
+                    onChange={(e) => setFormData({ ...formData, os_name: e.target.value })}
+                    fullWidth
+                  />
+                  <TextField
+                    label="OS License Cost (₹)"
+                    type="number"
+                    value={formData.os_license_cost}
+                    onChange={(e) => setFormData({ ...formData, os_license_cost: e.target.value })}
+                    fullWidth
+                  />
                 </Stack>
               </Box>
 
@@ -496,6 +547,22 @@ const LabDetail: React.FC = () => {
                     <MenuItem value="working">Working</MenuItem>
                     <MenuItem value="not_working">Broken</MenuItem>
                   </TextField>
+                </Stack>
+                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                  <TextField
+                    label="Keyboard Price (₹)"
+                    type="number"
+                    value={formData.keyboard_price}
+                    onChange={(e) => setFormData({ ...formData, keyboard_price: e.target.value })}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Mouse Price (₹)"
+                    type="number"
+                    value={formData.mouse_price}
+                    onChange={(e) => setFormData({ ...formData, mouse_price: e.target.value })}
+                    fullWidth
+                  />
                 </Stack>
               </Box>
 

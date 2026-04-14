@@ -32,6 +32,8 @@ export interface Lab {
   id: number;
   name: string;
   location: string;
+  manual_cost?: string | number;
+  total_price?: number | string;
   created_at?: string;
   updated_at?: string;
 }
@@ -43,6 +45,7 @@ export interface CPU {
   clock_speed: string;
   core_count: number;
   integrated_graphics: boolean;
+  price?: number | string;
 }
 
 export interface OS {
@@ -53,6 +56,7 @@ export interface OS {
   product_key: string;
   install_date: string;
   expiration_date: string;
+  license_cost?: number | string;
 }
 
 export interface Software {
@@ -69,6 +73,7 @@ export interface Peripheral {
   pc: number;
   type: string;
   status: 'working' | 'broken';
+  price?: number | string;
   // legacy compat
   peripheral_type?: string; 
   brand?: string;
@@ -87,6 +92,8 @@ export interface PC {
   peripherals: boolean;
   brand: string;
   lab: number;
+  base_price?: number | string;
+  total_price?: number | string;
   cpu?: CPU;
   os?: OS;
   software?: Software[];

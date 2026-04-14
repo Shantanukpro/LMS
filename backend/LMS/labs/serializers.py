@@ -13,6 +13,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class LabSerializer(serializers.ModelSerializer):
+    total_price = serializers.ReadOnlyField()
+
     class Meta:
         model = Lab
         fields = '__all__'
@@ -48,7 +50,7 @@ class SoftwareSerializer(serializers.ModelSerializer):
 
 class PCSerializer(serializers.ModelSerializer):
     cpu = CPUSerializer(required=False)
-    os = OSSerializer(read_only=True)
+    os = OSSerializer(required=False)
     peripheral_devices = PeripheralSerializer(many=True, required=False)
     installed_software = SoftwareSerializer(many=True, read_only=True)
     total_price = serializers.ReadOnlyField()
@@ -59,12 +61,15 @@ class PCSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         cpu_data = validated_data.pop('cpu', None)
+        os_data = validated_data.pop('os', None)
         peripherals_data = validated_data.pop('peripheral_devices', [])
         
         pc = PC.objects.create(**validated_data)
         
         if cpu_data:
             CPU.objects.create(pc=pc, **cpu_data)
+        if os_data:
+            OS.objects.create(pc=pc, **os_data)
             
         for p_data in peripherals_data:
             Peripheral.objects.create(pc=pc, **p_data)
@@ -73,6 +78,7 @@ class PCSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         cpu_data = validated_data.pop('cpu', None)
+        os_data = validated_data.pop('os', None)
         peripherals_data = validated_data.pop('peripheral_devices', [])
         
         # Update PC basic fields
@@ -86,6 +92,13 @@ class PCSerializer(serializers.ModelSerializer):
             for attr, value in cpu_data.items():
                 setattr(cpu_obj, attr, value)
             cpu_obj.save()
+            
+        # Update OS
+        if os_data:
+            os_obj, created = OS.objects.get_or_create(pc=instance)
+            for attr, value in os_data.items():
+                setattr(os_obj, attr, value)
+            os_obj.save()
             
         # Update Peripherals (Upsert based on type for common ones like keyboard/mouse)
         for p_data in peripherals_data:

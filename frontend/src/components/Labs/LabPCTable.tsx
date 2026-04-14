@@ -64,6 +64,11 @@ const LabPCTable: React.FC<LabPCTableProps> = ({ pcs, onEdit, onDelete, showLab 
                   Status
                 </span>
               </th>
+              <th className="px-6 py-4">
+                <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-gray-500">
+                  Cost (₹)
+                </span>
+              </th>
               <th className="px-6 py-4 text-right pr-12">
                 <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-gray-500">
                   Actions

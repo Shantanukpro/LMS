@@ -39,6 +39,7 @@ class User(AbstractUser):
 class Lab(models.Model):
     name = models.CharField(max_length=100, unique=True)
     location = models.CharField(max_length=200, blank=True, null=True)
+    manual_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Additional manual cost assigned to the lab")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -46,6 +47,12 @@ class Lab(models.Model):
         indexes = [
             models.Index(fields=['name']),
         ]
+
+    @property
+    def total_price(self):
+        comps_price = sum(pc.total_price for pc in self.pcs.all())
+        equip_price = sum(eq.total_price for eq in self.lab_equipments.all())
+        return self.manual_cost + comps_price + equip_price
 
     def __str__(self):
         return self.name
