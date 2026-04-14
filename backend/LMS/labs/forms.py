@@ -18,14 +18,14 @@ class PCForm(forms.ModelForm):
         fields = [
             'lab', 'device_name', 'product_id', 'processor', 'ram',
             'storage', 'status', 'connected', 'gpu', 'peripherals',
-            'brand', 'serial_number',
+            'brand', 'serial_number', 'base_price',
         ]
 
 
 class CPUForm(forms.ModelForm):
     class Meta:
         model = CPU
-        fields = ['pc', 'model', 'clock_speed', 'core_count', 'integrated_graphics']
+        fields = ['pc', 'model', 'clock_speed', 'core_count', 'integrated_graphics', 'price']
 
 
 class OSForm(forms.ModelForm):
@@ -33,7 +33,7 @@ class OSForm(forms.ModelForm):
         model = OS
         fields = [
             'pc', 'name', 'version', 'install_date',
-            'expiration_date', 'architecture', 'product_key',
+            'expiration_date', 'architecture', 'product_key', 'license_cost',
         ]
 
 
@@ -42,7 +42,7 @@ class PeripheralForm(forms.ModelForm):
         model = Peripheral
         fields = [
             'pc', 'peripheral_type', 'brand', 'model_name',
-            'serial_number', 'status',
+            'serial_number', 'status', 'price',
         ]
 
 
@@ -58,7 +58,7 @@ class LabEquipmentForm(forms.ModelForm):
         fields = [
             'lab', 'equipment_code', 'name', 'category', 'equipment_type',
             'brand', 'model_name', 'quantity', 'status', 'is_networked',
-            'installation_date', 'location_in_lab', 'remarks',
+            'installation_date', 'location_in_lab', 'remarks', 'unit_price',
         ]
 
 

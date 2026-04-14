@@ -42,6 +42,9 @@ def parse_bool(val):
     return val_str in ('yes', 'true', '1', 'y', 't')
 
 
+import decimal
+import pandas as pd
+
 def parse_int(val, default=None):
     """Parse integer value from various representations."""
     if val is None or pd.isna(val):
@@ -50,6 +53,15 @@ def parse_int(val, default=None):
         return int(float(val))
     except (ValueError, TypeError):
         return default
+
+def parse_decimal(val, default=None):
+    """Parse decimal value safely, returning default on NaN/invalid."""
+    if val is None or pd.isna(val) or val == '':
+        return default if default is not None else 0
+    try:
+        return Decimal(str(val))
+    except Exception:
+        return default if default is not None else Decimal('0')
 
 
 def normalize_columns(df):

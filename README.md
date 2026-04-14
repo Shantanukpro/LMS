@@ -216,6 +216,12 @@ graphics_card, storage_capacity, cpu_model, clock_speed, core_count,
 integrated_graphics, keyboard_status, mouse_status, serial_number
 ```
 
+### Muster Student Import CSV Headers
+```csv
+roll_no, student_name, attendance
+```
+*(Note: `student_name` and `attendance` are optional. Defaults to 'P' for attendance.)*
+
 ---
 
 ## Testing
