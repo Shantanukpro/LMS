@@ -332,28 +332,6 @@ const Register: React.FC = () => {
                   >
                     Google
                   </Button>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => handleSocialLogin('Facebook')}
-                    startIcon={
-                      <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M22.675 0h-21.35C.597 0 0 .597 0 1.325v21.351C0 23.403.597 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.73 0 1.323-.597 1.323-1.324V1.325C24 .597 23.403 0 22.675 0z" fill="#1877F2"/>
-                      </svg>
-                    }
-                    sx={{
-                      py: 1.2,
-                      borderRadius: 2,
-                      borderColor: 'var(--border-color)',
-                      color: 'var(--text-primary)',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      transition: 'all 0.2s',
-                      '&:hover': { borderColor: '#3b82f6', backgroundColor: 'var(--hover-bg)' }
-                    }}
-                  >
-                    Facebook
-                  </Button>
                 </Box>
                 
                 <Box sx={{ textAlign: 'center', mt: 1 }}>

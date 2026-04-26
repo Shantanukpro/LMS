@@ -28,6 +28,8 @@ class LoginView(generics.GenericAPIView):
                 "id": user.id,
                 "role": user.role,
                 "username": user.username,
+                "email": user.email,
+                "profile_picture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
             })
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -62,5 +64,7 @@ class SocialLoginView(generics.GenericAPIView):
             "id": user.id,
             "role": user.role,
             "username": user.username,
+            "email": user.email,
+            "profile_picture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
             "is_new": created
         }, status=status.HTTP_200_OK)

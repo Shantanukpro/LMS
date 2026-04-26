@@ -25,6 +25,8 @@ export interface AuthResponse {
   id?: number;
   role?: 'admin' | 'student' | 'faculty' | 'lab_incharge';
   username?: string;
+  email?: string;
+  profile_picture?: string | null;
 }
 
 // Lab Model

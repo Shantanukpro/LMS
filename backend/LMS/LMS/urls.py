@@ -37,3 +37,10 @@ urlpatterns = [
     path('api/import/', BulkImportAPIView.as_view(), name='bulk-import'),
     path("api/import-ui/", bulk_import_test_ui, name="bulk-import-ui"),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

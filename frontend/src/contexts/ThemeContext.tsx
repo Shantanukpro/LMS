@@ -30,6 +30,14 @@ export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   }, []);
 
+  React.useEffect(() => {
+    if (mode === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [mode]);
+
   const theme = React.useMemo(() => createTheme({
     palette: {
       mode,

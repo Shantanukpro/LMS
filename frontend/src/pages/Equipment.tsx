@@ -26,7 +26,7 @@ import {
 import { Add, Refresh, Edit, Delete, Search, ExpandMore } from '@mui/icons-material';
 import { labEquipmentAPI, labsAPI } from '../services/api';
 import type { LabEquipment, Lab, NetworkEquipmentDetails, ServerDetails, ProjectorDetails, ElectricalApplianceDetails } from '../types';
-import { Eye, Server as ServerIcon, Network, Cpu, HardDrive, Activity } from 'lucide-react';
+import { Eye, Server as ServerIcon, Network, Cpu, HardDrive, Activity, X } from 'lucide-react';
 import ModernTable from '../components/Common/ModernTable';
 import ModernTableRow from '../components/Common/ModernTableRow';
 import EquipmentCard from '../components/Labs/EquipmentCard';
@@ -246,66 +246,134 @@ const Equipment: React.FC = () => {
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>Manage and track all lab equipment</Typography>
       </Box>
 
-      {/* Filters */}
-      <Card
-        className="panel"
-        sx={{ mb: 4, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' }}
-      >
-        <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
-            <TextField
-              label="Search"
+      {/* Tailwind CSS Filter Bar */}
+      <div className="mb-6 flex flex-col gap-4">
+        {/* Top row: Filters and Actions */}
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white/50 dark:bg-slate-900/40 p-3 rounded-[1.25rem] border border-slate-200 dark:border-slate-800/60 shadow-sm backdrop-blur-xl transition-all duration-300">
+          
+          {/* Search Bar */}
+          <div className="relative w-full md:w-80 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search fontSize="small" className="text-slate-400 group-focus-within:text-indigo-500 transition-colors duration-300" />
+            </div>
+            <input
+              type="text"
               placeholder="Brand or model..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Search fontSize="small" />
-                  </InputAdornment>
-                )
-              }}
-              sx={{ flex: 1 }}
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-full text-sm font-medium text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 shadow-sm transition-all duration-300"
             />
-            <TextField
-              select
-              label="Lab"
+          </div>
+
+          <div className="flex flex-wrap gap-2.5 items-center w-full md:w-auto">
+            {/* Filter Dropdowns using native select with Tailwind styling */}
+            <select
               value={fLab}
               onChange={(e) => setFLab(e.target.value === '' ? '' : Number(e.target.value))}
-              sx={{ minWidth: 180 }}
+              className="appearance-none cursor-pointer bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all duration-300 dark:backdrop-blur-md"
             >
-              <MenuItem value="">All</MenuItem>
+              <option value="" className="dark:bg-slate-800">All Labs</option>
               {labs.map((l) => (
-                <MenuItem key={l.id} value={l.id}>{l.name}</MenuItem>
+                <option key={l.id} value={l.id} className="dark:bg-slate-800">{l.name}</option>
               ))}
-            </TextField>
-            <TextField select label="Type" value={fType} onChange={(e) => setFType(e.target.value as any)} sx={{ minWidth: 160 }}>
-              <MenuItem value="">All</MenuItem>
+            </select>
+
+            <select
+              value={fType}
+              onChange={(e) => setFType(e.target.value as any)}
+              className="appearance-none cursor-pointer bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all duration-300 dark:backdrop-blur-md capitalize"
+            >
+              <option value="" className="dark:bg-slate-800">All Types</option>
               {EQUIPMENT_TYPES.map((t) => (
-                <MenuItem key={t} value={t} style={{ textTransform: 'capitalize' }}>
+                <option key={t} value={t} className="dark:bg-slate-800">
                   {t.replace('_', ' ').toLowerCase()}
-                </MenuItem>
+                </option>
               ))}
-            </TextField>
-            <TextField select label="Status" value={fStatus} onChange={(e) => setFStatus(e.target.value as any)} sx={{ minWidth: 180 }}>
-              <MenuItem value="">All</MenuItem>
+            </select>
+
+            <select
+              value={fStatus}
+              onChange={(e) => setFStatus(e.target.value as any)}
+              className="appearance-none cursor-pointer bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all duration-300 dark:backdrop-blur-md capitalize"
+            >
+              <option value="" className="dark:bg-slate-800">All Statuses</option>
               {STATUS.map((s) => (
-                <MenuItem key={s} value={s} style={{ textTransform: 'capitalize' }}>{s.replace('_', ' ')}</MenuItem>
+                <option key={s} value={s} className="dark:bg-slate-800">{s.replace('_', ' ')}</option>
               ))}
-            </TextField>
+            </select>
+
             <Tooltip title="Refresh">
-              <span>
-                <IconButton onClick={loadAll} disabled={loading}>
-                  {loading ? <CircularProgress size={22} /> : <Refresh />}
-                </IconButton>
-              </span>
+              <button
+                onClick={loadAll}
+                disabled={loading}
+                className="p-2.5 rounded-full border border-transparent text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all duration-300 disabled:opacity-50"
+              >
+                {loading ? <CircularProgress size={18} color="inherit" /> : <Refresh fontSize="small" />}
+              </button>
             </Tooltip>
+
             {isAdmin && (
-              <Button variant="contained" startIcon={<Add />} onClick={openCreate}>Add Equipment</Button>
+              <button
+                onClick={openCreate}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ml-1"
+              >
+                <Add fontSize="small" />
+                <span>Add Equipment</span>
+              </button>
             )}
-          </Stack>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+
+        {/* Active Filter Chips */}
+        {(q || fLab || fType || fStatus) && (
+          <div className="flex flex-wrap gap-2 items-center px-2 animate-fade-in">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mr-1 uppercase tracking-wider">Active Filters:</span>
+            
+            {q && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300">
+                <span className="text-slate-400">Search:</span> {q}
+                <button onClick={() => setQ('')} className="text-slate-400 hover:text-rose-500 ml-0.5 focus:outline-none transition-colors">
+                  <X size={14} />
+                </button>
+              </span>
+            )}
+            
+            {fLab && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300">
+                <span className="text-slate-400">Lab:</span> {labs.find(l => l.id === fLab)?.name}
+                <button onClick={() => setFLab('')} className="text-slate-400 hover:text-rose-500 ml-0.5 focus:outline-none transition-colors">
+                  <X size={14} />
+                </button>
+              </span>
+            )}
+
+            {fType && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300 capitalize">
+                <span className="text-slate-400">Type:</span> {fType.replace('_', ' ').toLowerCase()}
+                <button onClick={() => setFType('')} className="text-slate-400 hover:text-rose-500 ml-0.5 focus:outline-none transition-colors">
+                  <X size={14} />
+                </button>
+              </span>
+            )}
+
+            {fStatus && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300 capitalize">
+                <span className="text-slate-400">Status:</span> {fStatus.replace('_', ' ')}
+                <button onClick={() => setFStatus('')} className="text-slate-400 hover:text-rose-500 ml-0.5 focus:outline-none transition-colors">
+                  <X size={14} />
+                </button>
+              </span>
+            )}
+
+            <button
+              onClick={() => { setQ(''); setFLab(''); setFType(''); setFStatus(''); }}
+              className="text-xs text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 font-semibold px-2 py-1 ml-1 cursor-pointer transition-colors duration-300 opacity-80 hover:opacity-100"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Content */}
       {loading ? (

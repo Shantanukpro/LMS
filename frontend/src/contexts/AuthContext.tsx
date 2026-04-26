@@ -75,9 +75,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const loggedInUser: User = {
         id: response.id || 0,
         username: response.username || credentials.username,
-        email: '',
+        email: response.email || '',
         role: (response.role as User['role']) || 'student',
-        profile_picture: null,
+        profile_picture: response.profile_picture || null,
       };
       setUser(loggedInUser);
       // Persist minimal user info for refresh survival
@@ -105,9 +105,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const loggedInUser: User = {
         id: response.id || 0,
         username: response.username || data.email.split('@')[0] || 'User',
-        email: data.email,
+        email: response.email || data.email,
         role: (response.role as User['role']) || 'student',
-        profile_picture: null,
+        profile_picture: response.profile_picture || null,
       };
       setUser(loggedInUser);
       localStorage.setItem('user_info', JSON.stringify(loggedInUser));

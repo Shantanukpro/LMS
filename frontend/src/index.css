@@ -4,7 +4,7 @@
 /* ── Theme customisation (Tailwind v4 syntax) ───────────────────── */
 @theme {
   /* Font */
-  --font-sans: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  --font-sans: Inter, "Plus Jakarta Sans", system-ui, sans-serif;
 
   /* Brand blue palette */
   --color-brand-50:  #eff6ff;

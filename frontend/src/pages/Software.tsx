@@ -29,7 +29,7 @@ import ModernTable from '../components/Common/ModernTable';
 import ModernTableRow from '../components/Common/ModernTableRow';
 import EquipmentCard from '../components/Labs/EquipmentCard';
 import BooleanBadge from '../components/Labs/BooleanBadge';
-import { Layers, Key, Calendar, Monitor } from 'lucide-react';
+import { Layers, Key, Calendar, Monitor, X } from 'lucide-react';
 
 type SoftwareForm = {
   pc: number | '';
@@ -224,43 +224,111 @@ const Software: React.FC = () => {
 
       {tabValue === 0 && (
         <Box className="animate-fade-in">
-          {/* Filters */}
-          <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
-            <TextField
-              label="Search"
-              placeholder="Name, version or license..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              InputProps={{ endAdornment: <Search fontSize="small" /> }}
-              sx={{ flex: 1 }}
-            />
-            <TextField select label="Lab" value={fLab} onChange={(e) => { setFLab(e.target.value === '' ? '' : Number(e.target.value)); setFPc(''); }} sx={{ minWidth: 180 }}>
-              <MenuItem value="">All</MenuItem>
-              {labs.map((l) => (
-                <MenuItem key={l.id} value={l.id}>{l.name}</MenuItem>
-              ))}
-            </TextField>
-            <TextField select label="PC" value={fPc} onChange={(e) => setFPc(e.target.value === '' ? '' : Number(e.target.value))} sx={{ minWidth: 180 }}>
-              <MenuItem value="">All</MenuItem>
-              {pcsForLab(fLab).map((p) => (
-                <MenuItem key={p.id} value={p.id}>{p.device_name}</MenuItem>
-              ))}
-            </TextField>
-            <Tooltip title="Refresh">
-              <span>
-                <IconButton onClick={loadAll} disabled={loading}>
-                  {loading ? <CircularProgress size={22} /> : <Refresh />}
-                </IconButton>
-              </span>
-            </Tooltip>
-            {isAdmin && (
-              <Button variant="contained" startIcon={<Add />} onClick={openCreate}>Add Software</Button>
+          {/* Tailwind CSS Filter Bar */}
+          <div className="mb-6 flex flex-col gap-4">
+            {/* Top row: Filters and Actions */}
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white/50 dark:bg-slate-900/40 p-3 rounded-[1.25rem] border border-slate-200 dark:border-slate-800/60 shadow-sm backdrop-blur-xl transition-all duration-300">
+              
+              {/* Search Bar */}
+              <div className="relative w-full md:w-80 group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search fontSize="small" className="text-slate-400 group-focus-within:text-indigo-500 transition-colors duration-300" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Name, version or license..."
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-full text-sm font-medium text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 shadow-sm transition-all duration-300"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2.5 items-center w-full md:w-auto">
+                <select
+                  value={fLab}
+                  onChange={(e) => { setFLab(e.target.value === '' ? '' : Number(e.target.value)); setFPc(''); }}
+                  className="appearance-none cursor-pointer bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all duration-300 dark:backdrop-blur-md"
+                >
+                  <option value="" className="dark:bg-slate-800">All Labs</option>
+                  {labs.map((l) => (
+                    <option key={l.id} value={l.id} className="dark:bg-slate-800">{l.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={fPc}
+                  onChange={(e) => setFPc(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="appearance-none cursor-pointer bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all duration-300 dark:backdrop-blur-md"
+                >
+                  <option value="" className="dark:bg-slate-800">All PCs</option>
+                  {pcsForLab(fLab).map((p) => (
+                    <option key={p.id} value={p.id} className="dark:bg-slate-800">{p.device_name}</option>
+                  ))}
+                </select>
+
+                <Tooltip title="Refresh">
+                  <button
+                    onClick={loadAll}
+                    disabled={loading}
+                    className="p-2.5 rounded-full border border-transparent text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all duration-300 disabled:opacity-50"
+                  >
+                    {loading ? <CircularProgress size={18} color="inherit" /> : <Refresh fontSize="small" />}
+                  </button>
+                </Tooltip>
+
+                {isAdmin && (
+                  <button
+                    onClick={openCreate}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ml-1"
+                  >
+                    <Add fontSize="small" />
+                    <span>Add Software</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Active Filter Chips */}
+            {(q || fLab || fPc) && (
+              <div className="flex flex-wrap gap-2 items-center px-2 animate-fade-in">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mr-1 uppercase tracking-wider">Active Filters:</span>
+                
+                {q && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300">
+                    <span className="text-slate-400">Search:</span> {q}
+                    <button onClick={() => setQ('')} className="text-slate-400 hover:text-rose-500 ml-0.5 focus:outline-none transition-colors">
+                      <X size={14} />
+                    </button>
+                  </span>
+                )}
+                
+                {fLab && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300">
+                    <span className="text-slate-400">Lab:</span> {labs.find(l => l.id === fLab)?.name}
+                    <button onClick={() => setFLab('')} className="text-slate-400 hover:text-rose-500 ml-0.5 focus:outline-none transition-colors">
+                      <X size={14} />
+                    </button>
+                  </span>
+                )}
+
+                {fPc && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300">
+                    <span className="text-slate-400">PC:</span> {pcs.find(p => p.id === fPc)?.device_name}
+                    <button onClick={() => setFPc('')} className="text-slate-400 hover:text-rose-500 ml-0.5 focus:outline-none transition-colors">
+                      <X size={14} />
+                    </button>
+                  </span>
+                )}
+
+                <button
+                  onClick={() => { setQ(''); setFLab(''); setFPc(''); }}
+                  className="text-xs text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 font-semibold px-2 py-1 ml-1 cursor-pointer transition-colors duration-300 opacity-80 hover:opacity-100"
+                >
+                  Clear all
+                </button>
+              </div>
             )}
-          </Stack>
-        </CardContent>
-      </Card>
+          </div>
 
       {/* Table Section */}
       {loading ? (
