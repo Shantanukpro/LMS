@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Dialog, DialogTitle, DialogContent, DialogActions, 
   Button, TextField, MenuItem, Stack, Typography, 
-  ToggleButtonGroup, ToggleButton, Box, CircularProgress
+  ToggleButtonGroup, ToggleButton, Box, CircularProgress,
+  useTheme
 } from '@mui/material';
 import { AlertCircle, Send, Info } from 'lucide-react';
 import { ticketsAPI, labsAPI, pcsAPI, labEquipmentAPI } from '../../services/api';
@@ -11,11 +12,14 @@ import type { Lab, PC, LabEquipment } from '../../types';
 interface RaiseIssueProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (ticket: any) => void;
   studentId: number;
 }
 
 const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, studentId }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState('');
@@ -84,13 +88,13 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
       setLoading(true);
       setError('');
       
-      await ticketsAPI.create({
+      const newTicket = await ticketsAPI.create({
         student: studentId,
         pc: issueType === 'pc' ? (fItem as number) : undefined as any, // Adjust based on your API's ability to handle equipment tickets
         issue_description: `[${urgency.toUpperCase()}] ${description}`,
       });
 
-      onSuccess();
+      onSuccess(newTicket);
       handleClose();
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to submit ticket');
@@ -108,6 +112,42 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
     onClose();
   };
 
+  const getTextFieldSx = (borderRadius = '8px') => ({
+    '& .MuiOutlinedInput-root': {
+      backgroundColor: isDark ? '#0f1623' : '#ffffff',
+      color: isDark ? '#e2e8f0' : '#1e293b',
+      borderRadius,
+      transition: 'all 0.2s ease-in-out',
+      '& fieldset': {
+        borderColor: isDark ? '#2e3a50' : '#cbd5e1',
+        borderWidth: isDark ? '1px' : '1.5px',
+      },
+      '&:hover fieldset': {
+        borderColor: isDark ? '#475569' : '#94a3b8',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: '#3b82f6',
+        borderWidth: '1.5px',
+        boxShadow: !isDark ? '0 0 0 3px rgba(59,130,246,0.15)' : 'none',
+      },
+      '& .MuiOutlinedInput-input::placeholder': {
+        color: isDark ? '#64748b' : '#94a3b8',
+        opacity: 1,
+      }
+    },
+    '& .MuiInputLabel-root': {
+      color: isDark ? '#94a3b8' : '#475569',
+      fontSize: '13px',
+      fontWeight: 500,
+    },
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: '#3b82f6',
+    },
+    '& .MuiSelect-icon': {
+      color: isDark ? '#94a3b8' : '#475569',
+    }
+  });
+
   return (
     <Dialog 
       open={open} 
@@ -116,34 +156,44 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
       fullWidth
       PaperProps={{
         sx: { 
-          backgroundColor: '#0d1117', 
-          border: '1px solid rgba(48,54,61,1)', 
+          backgroundColor: isDark ? '#1a1f2e' : '#ffffff', 
+          border: isDark ? '1px solid #2e3a50' : 'none', 
           backgroundImage: 'none',
-          borderRadius: '16px'
+          borderRadius: '16px',
+          boxShadow: isDark 
+            ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' 
+            : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
         }
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ color: 'var(--text-primary)', fontWeight: 700, pb: 1 }}>
+        <DialogTitle sx={{ color: isDark ? '#e2e8f0' : '#1e293b', fontWeight: 700, pb: 1, p: 3 }}>
           Raise New Issue
         </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ 
+          p: 3,
+          '&::-webkit-scrollbar': { width: '8px' },
+          '&::-webkit-scrollbar-track': { background: isDark ? '#2e3a50' : '#e2e8f0', borderRadius: '4px' },
+          '&::-webkit-scrollbar-thumb': { background: isDark ? '#4a5568' : '#94a3b8', borderRadius: '4px' },
+          '&::-webkit-scrollbar-thumb:hover': { background: isDark ? '#718096' : '#64748b' }
+        }}>
           <Stack spacing={3} sx={{ mt: 1 }}>
             {error && (
               <Box sx={{ 
                 p: 2, 
                 borderRadius: '8px', 
-                backgroundColor: 'rgba(239,68,68,0.1)', 
-                border: '1px solid rgba(239,68,68,0.2)', 
+                backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', 
+                border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}`, 
                 display: 'flex', gap: 1.5, alignItems: 'center'
               }}>
                 <AlertCircle size={18} color="#ef4444" />
-                <Typography variant="body2" sx={{ color: '#ef4444' }}>{error}</Typography>
+                <Typography variant="body2" sx={{ color: isDark ? '#ef4444' : '#b91c1c' }}>{error}</Typography>
               </Box>
             )}
 
             <Box>
-              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 1.5, display: 'block', fontWeight: 600 }}>
+              <Typography variant="caption" sx={{ color: isDark ? '#64748b' : '#334155', letterSpacing: '0.1em', mb: 1.5, display: 'block', fontWeight: 600, textTransform: 'uppercase' }}>
                 Issue Category
               </Typography>
               <ToggleButtonGroup
@@ -153,16 +203,26 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
                 fullWidth
                 size="small"
                 sx={{ 
+                  gap: 1,
+                  '& .MuiToggleButtonGroup-grouped': {
+                    borderRadius: '9999px !important',
+                    border: '0 !important',
+                  },
                   '& .MuiToggleButton-root': { 
-                    borderColor: 'rgba(48,54,61,1)', 
-                    color: 'var(--text-secondary)',
                     textTransform: 'none',
                     fontWeight: 600,
+                    border: `1px solid ${isDark ? '#2e3a50' : '#cbd5e1'} !important`,
+                    backgroundColor: isDark ? 'transparent' : '#f1f5f9',
+                    color: isDark ? '#94a3b8' : '#475569',
+                    transition: 'all 0.2s',
                     '&.Mui-selected': { 
-                      backgroundColor: 'rgba(59,130,246,0.1)', 
-                      color: '#3b82f6',
-                      borderColor: '#3b82f6',
-                      '&:hover': { backgroundColor: 'rgba(59,130,246,0.15)' }
+                      backgroundColor: '#3b82f6 !important', 
+                      color: '#ffffff !important',
+                      borderColor: '#3b82f6 !important',
+                      boxShadow: isDark ? '0 4px 12px rgba(59,130,246,0.25)' : '0 4px 10px rgba(59,130,246,0.2)',
+                    },
+                    '&:hover:not(.Mui-selected)': {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
                     }
                   } 
                 }}
@@ -181,10 +241,7 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
                 value={fLab}
                 onChange={(e) => setFLab(e.target.value as unknown as number)}
                 disabled={dataLoading}
-                slotProps={{ 
-                  input: { sx: { borderRadius: '8px' } },
-                  inputLabel: { sx: { color: 'var(--text-secondary)' } }
-                }}
+                sx={getTextFieldSx()}
               >
                 {labs.map(l => <MenuItem key={l.id} value={l.id}>{l.name}</MenuItem>)}
               </TextField>
@@ -197,10 +254,7 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
                 value={fItem}
                 onChange={(e) => setFItem(e.target.value as unknown as number)}
                 disabled={!fLab || dataLoading}
-                slotProps={{ 
-                  input: { sx: { borderRadius: '8px' } },
-                  inputLabel: { sx: { color: 'var(--text-secondary)' } }
-                }}
+                sx={getTextFieldSx()}
               >
                 {issueType === 'pc' 
                   ? pcs.map(p => <MenuItem key={p.id} value={p.id}>{p.device_name}</MenuItem>)
@@ -220,23 +274,20 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
                 value={description}
                 onChange={(e) => setDescription(e.target.value.substring(0, 500))}
                 error={description.length > 0 && description.length < 20}
-                slotProps={{ 
-                  input: { sx: { borderRadius: '12px' } },
-                  inputLabel: { sx: { color: 'var(--text-secondary)' } }
-                }}
+                sx={getTextFieldSx('12px')}
               />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                <Typography variant="caption" sx={{ color: description.length < 20 ? '#ef4444' : 'var(--text-secondary)' }}>
-                  {description.length < 20 ? 'Min 20 characters required' : 'Enter clear details'}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5, px: 0.5 }}>
+                <Typography variant="caption" sx={{ color: description.length > 0 && description.length < 20 ? '#ef4444' : (isDark ? '#64748b' : '#94a3b8') }}>
+                  {description.length > 0 && description.length < 20 ? 'Min 20 characters required' : 'Enter clear details'}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                <Typography variant="caption" sx={{ color: isDark ? '#64748b' : '#94a3b8' }}>
                   {description.length} / 500
                 </Typography>
               </Box>
             </Box>
 
             <Box>
-              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 1.5, display: 'block', fontWeight: 600 }}>
+              <Typography variant="caption" sx={{ color: isDark ? '#64748b' : '#334155', letterSpacing: '0.1em', mb: 1.5, display: 'block', fontWeight: 600, textTransform: 'uppercase' }}>
                 Urgency Level
               </Typography>
               <ToggleButtonGroup
@@ -246,14 +297,28 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
                 fullWidth
                 size="small"
                 sx={{ 
+                  gap: 1,
+                  '& .MuiToggleButtonGroup-grouped': {
+                    borderRadius: '9999px !important',
+                    border: '0 !important',
+                  },
                   '& .MuiToggleButton-root': { 
-                    borderColor: 'rgba(48,54,61,1)', 
-                    color: 'var(--text-secondary)',
+                    textTransform: 'none',
                     fontWeight: 600,
+                    border: `1px solid ${isDark ? '#2e3a50' : '#cbd5e1'} !important`,
+                    backgroundColor: isDark ? 'transparent' : '#f1f5f9',
+                    color: isDark ? '#94a3b8' : '#475569',
+                    transition: 'all 0.2s',
                     '&.Mui-selected': { 
-                      backgroundColor: (theme: any) => urgency === 'High' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
-                      color: (theme: any) => urgency === 'High' ? '#ef4444' : '#10b981',
-                      borderColor: (theme: any) => urgency === 'High' ? '#ef4444' : '#10b981',
+                      backgroundColor: (theme: any) => urgency === 'High' 
+                        ? (isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2') 
+                        : (isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4') + ' !important',
+                      color: (theme: any) => (urgency === 'High' ? '#ef4444' : '#10b981') + ' !important',
+                      borderColor: (theme: any) => (urgency === 'High' ? '#ef4444' : '#10b981') + ' !important',
+                      boxShadow: 'none',
+                    },
+                    '&:hover:not(.Mui-selected)': {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
                     }
                   } 
                 }}
@@ -265,8 +330,15 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button onClick={handleClose} sx={{ color: 'var(--text-secondary)', textTransform: 'none', fontWeight: 600 }}>
+        <DialogActions sx={{ p: 3, pt: 0, borderTop: `1px solid ${isDark ? 'transparent' : 'transparent'}`, mt: 1 }}>
+          <Button onClick={handleClose} sx={{ 
+            color: isDark ? '#94a3b8' : '#64748b', 
+            textTransform: 'none', 
+            fontWeight: 600,
+            borderRadius: '8px',
+            px: 2,
+            '&:hover': { background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+          }}>
             Cancel
           </Button>
           <Button 
@@ -280,8 +352,19 @@ const RaiseIssueModal: React.FC<RaiseIssueProps> = ({ open, onClose, onSuccess, 
               borderRadius: '8px',
               textTransform: 'none',
               px: 4,
+              py: 1,
               fontWeight: 700,
-              '&:hover': { backgroundColor: '#2563eb' }
+              boxShadow: isDark ? '0 4px 12px rgba(59,130,246,0.25)' : '0 4px 10px rgba(59,130,246,0.15)',
+              transition: 'all 0.2s',
+              '&:hover': { 
+                backgroundColor: '#2563eb',
+                transform: 'translateY(-1px)',
+                boxShadow: isDark ? '0 6px 16px rgba(59,130,246,0.35)' : '0 6px 14px rgba(59,130,246,0.25)'
+              },
+              '&.Mui-disabled': {
+                backgroundColor: isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.4)',
+                color: 'rgba(255,255,255,0.7)'
+              }
             }}
           >
             {loading ? 'Submitting...' : 'Raise Issue'}

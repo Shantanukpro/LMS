@@ -79,8 +79,8 @@ const MaintenanceTableRow: React.FC<RowProps> = ({
   index, log, role, labName, onRowClick, onEdit, onEscalate, onDelete 
 }) => {
   const isAdmin = role === 'admin';
-  const isResolved = log.status === 'Resolved';
-  const isEscalated = log.status === 'Escalated';
+  const isResolved = log.status?.toLowerCase() === 'resolved';
+  const isEscalated = log.status?.toLowerCase() === 'escalated';
 
   return (
     <tr 

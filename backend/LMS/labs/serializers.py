@@ -38,7 +38,6 @@ class PeripheralSerializer(serializers.ModelSerializer):
     class Meta:
         model = Peripheral
         fields = '__all__'
-        read_only_fields = ('pc',)
 
 
 class SoftwareSerializer(serializers.ModelSerializer):

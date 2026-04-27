@@ -194,7 +194,7 @@ const Maintenance: React.FC = () => {
       await ticketsAPI.update(ticketId, { status: 'resolved' });
 
       // 2. Automatically create a maintenance log for records
-      await maintenanceAPI.create({
+      const newLog = await maintenanceAPI.create({
         pc: ticket.pc,
         reported_by: ticket.student as any,
         issue_description: ticket.issue_description,
@@ -203,8 +203,9 @@ const Maintenance: React.FC = () => {
         remarks: 'Directly resolved from student ticket'
       });
 
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'resolved' } : t));
+      setLogs(prev => [newLog, ...prev]);
       setSuccess('Ticket marked as resolved and logged');
-      loadData();
     } catch (e) {
       setError('Failed to resolve and log ticket');
     }
@@ -214,8 +215,9 @@ const Maintenance: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this log? Progress will be lost.')) return;
     try {
       await maintenanceAPI.delete(id);
+      setLogs(prev => prev.filter(l => l.id !== id));
       setSuccess('Log deleted successfully');
-      loadData();
+      setOpenDetail(false);
     } catch (e) {
       setError('Fail to delete log');
     }
@@ -335,17 +337,32 @@ const Maintenance: React.FC = () => {
       <AddLogModal 
         open={openAddLog} 
         onClose={() => setOpenAddLog(false)} 
-        onSuccess={() => { loadData(); setSuccess('Log updated successfully'); }}
+        onSuccess={(updatedLog) => { 
+          setLogs(prev => {
+            if (editingLog) {
+              return prev.map(l => l.id === updatedLog.id ? updatedLog : l);
+            }
+            return [updatedLog, ...prev];
+          });
+          if (convertingTicket) {
+            setTickets(prev => prev.map(t => t.id === convertingTicket.id ? { ...t, status: updatedLog.status || 'resolved' } : t));
+          }
+          setSuccess('Log updated successfully'); 
+        }}
         editingLog={editingLog}
         convertingTicket={convertingTicket}
         users={users}
         labs={labs}
+        allPcs={pcs}
       />
 
       <RaiseIssueModal 
         open={openRaiseIssue} 
         onClose={() => setOpenRaiseIssue(false)} 
-        onSuccess={() => { loadData(); setSuccess('Issue submitted! Admin will review it shortly.'); }}
+        onSuccess={(newTicket) => { 
+          setTickets(prev => [newTicket, ...prev]);
+          setSuccess('Issue submitted! Admin will review it shortly.'); 
+        }}
         studentId={user?.id || 0}
       />
 

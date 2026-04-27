@@ -60,10 +60,9 @@ const Peripherals: React.FC = () => {
 
   const handleUnassign = async (id: number) => {
     try {
-      // Typically removing it from a PC means patching pc null 
       await peripheralsAPI.update(id, { pc: null } as any);
+      setPeripherals(prev => prev.map(p => p.id === id ? { ...p, pc: null, pc_name: undefined } : p));
       setSuccess('Peripheral unassigned successfully');
-      load();
     } catch (err) {
       setError('Failed to unassign peripheral');
     }

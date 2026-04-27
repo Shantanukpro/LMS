@@ -185,7 +185,7 @@ class Peripheral(models.Model):
         ('not_working', 'Not Working'),
     )
 
-    pc = models.ForeignKey(PC, on_delete=models.CASCADE, related_name='peripheral_devices')
+    pc = models.ForeignKey(PC, on_delete=models.SET_NULL, related_name='peripheral_devices', null=True, blank=True)
     peripheral_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     brand = models.CharField(max_length=100, blank=True, null=True)
     model_name = models.CharField(max_length=100, blank=True, null=True)
