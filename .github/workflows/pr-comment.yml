@@ -1,0 +1,48 @@
+name: PR Comment with Idempotency
+'on':
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+permissions:
+  pull-requests: write
+  contents: read
+jobs:
+  post-comment:
+    runs-on: ubuntu-latest
+    outputs:
+      comment-url: ${{ steps.post-or-reuse.outputs.comment-url }}
+      fingerprint: ${{ steps.post-or-reuse.outputs.fingerprint }}
+      created: ${{ steps.post-or-reuse.outputs.created }}
+    steps:
+    - name: Post or reuse PR comment
+      id: post-or-reuse
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: "const crypto = require('crypto');\nconst prNumber = context.issue.number;\n\
+          const commentPayload = {\n  message: 'This PR is part of the LMS Paperclip\
+          \ PR workflow test.',\n  repo: `${context.repo.owner}/${context.repo.repo}`,\n\
+          };\nconst commentHash = crypto\n  .createHash('sha256')\n  .update(JSON.stringify(commentPayload))\n\
+          \  .digest('hex')\n  .slice(0, 16);\nconst fingerprint = `LMS-PR-WORKFLOW-${prNumber}-${commentHash}`;\n\
+          const marker = `<!-- paperclip-pr-comment:fingerprint=${fingerprint} -->`;\n\
+          const expectedBody = `${marker}\nThis PR is part of the LMS Paperclip PR\
+          \ workflow test. A README comment will be added once this change is merged.`;\n\
+          \nconst { data: comments } = await github.rest.issues.listComments({\n \
+          \ owner: context.repo.owner,\n  repo: context.repo.repo,\n  issue_number:\
+          \ prNumber,\n});\n\nconst existing = comments.find(c => c.body && c.body.includes(marker));\n\
+          if (existing) {\n  core.info(`Comment already exists at ${existing.html_url}\
+          \ (id: ${existing.id}). Skipping.`);\n  core.setOutput('comment-url', existing.html_url);\n\
+          \  core.setOutput('fingerprint', fingerprint);\n  core.setOutput('created',\
+          \ 'false');\n  core.setOutput('evidence', JSON.stringify({\n    type: 'existing-comment',\n\
+          \    fingerprint,\n    html_url: existing.html_url,\n    id: existing.id,\n\
+          \    created_at: existing.created_at,\n  }));\n  return;\n}\n\nconst { data:\
+          \ created } = await github.rest.issues.createComment({\n  owner: context.repo.owner,\n\
+          \  repo: context.repo.repo,\n  issue_number: prNumber,\n  body: expectedBody,\n\
+          });\n\ncore.info(`Created comment at ${created.html_url} (id: ${created.id})`);\n\
+          core.setOutput('comment-url', created.html_url);\ncore.setOutput('fingerprint',\
+          \ fingerprint);\ncore.setOutput('created', 'true');\ncore.setOutput('evidence',\
+          \ JSON.stringify({\n  type: 'new-comment',\n  fingerprint,\n  html_url:\
+          \ created.html_url,\n  id: created.id,\n  created_at: created.created_at,\n\
+          }));"
